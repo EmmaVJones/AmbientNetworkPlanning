@@ -23,14 +23,20 @@ shinyServer(function(input, output, session) {
   basin_filter <- shiny::callModule(dynamicSelect, "basin", level3_filter, "Basin")#level3_filter()$Basin)
   watershed_filter <- shiny::callModule(dynamicSelect, "watershed", basin_filter, "Huc6_Vahu6")#year_filter()$Basin)
   
+  callModule(stationMap, "watershedMap",watershed_filter)
+  
+  output$WSHDselectedElementsTable <- DT::renderDataTable({
+    if(input$radio == 'Watershed Information'){datatable(watershed_filter())}})
+  
+  
   stationID_filter <- shiny::callModule(dynamicSelect, "stationID", the_data, "FDT_STA_ID" )
   
+  callModule(stationMap, "stationMap",stationID_filter)
   
-  output$selectedElementsTable <- DT::renderDataTable({
-    
-      datatable(watershed_filter())
-    })
+  output$STATIONIDselectedElementsTable <- DT::renderDataTable({
+    if(input$radio == 'StationID'){datatable(stationID_filter())}})
   
-  callModule(stationMap, "stationMap")
+  
+  
   
 })

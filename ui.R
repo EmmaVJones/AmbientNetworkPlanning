@@ -10,21 +10,28 @@ shinyUI(fluidPage(theme = "yeti.css",
                       navbarPage("Monitoring Network Planning App"),
                       
                       sidebarPanel(
-                        h3("Query By:"),
-                        dynamicSelectInput("level1", "Level 1 Code", multiple = TRUE),
-                        dynamicSelectInput("level3", "Level 3 Code", multiple = TRUE),
-                        dynamicSelectInput("basin", "Major Basin", multiple = TRUE),
-                        dynamicSelectInput("watershed", "Watershed", multiple = TRUE),
-                        br(),hr(),br(),
-                        dynamicSelectInput("stationID", "StationID", multiple = TRUE)
+                        #h3("Query By:"),
+                        radioButtons("radio",h3("Query By:"),choices=c("Watershed Information","StationID"),selected="Watershed Information"),
+                        hr(),
+                        conditionalPanel(condition="input.radio == 'Watershed Information'",
+                                         dynamicSelectInput("level1", "Level 1 Code", multiple = TRUE),
+                                         dynamicSelectInput("level3", "Level 3 Code", multiple = TRUE),
+                                         dynamicSelectInput("basin", "Major Basin", multiple = TRUE),
+                                         dynamicSelectInput("watershed", "Watershed", multiple = TRUE)),
+                        conditionalPanel(condition="input.radio == 'StationID'",
+                                        dynamicSelectInput("stationID", "StationID", multiple = TRUE))
+                        
+                        
                       ),
                       
                       mainPanel(
                         tabsetPanel(
-                          tabPanel("Table",
-                                   DT::dataTableOutput("selectedElementsTable")),
-                          tabPanel("Map", 
-                                   stationMapUI("stationMap")
+                          tabPanel("Watershed Results",
+                                   stationMapUI("watershedMap"),
+                                   DT::dataTableOutput("WSHDselectedElementsTable")),
+                          tabPanel("StationID Results", 
+                                   stationMapUI("stationMap"),
+                                   DT::dataTableOutput("STATIONIDselectedElementsTable")
                                    #bootstrapPage(div(class="outer",
                                     #                 tags$style(type ="text/css",".outer {position: fixed; top: 75px; left: 0; right: 0; bottom: 0; overflow-y: scroll; padding: 0}"),
                                      #                br(),br(),))
