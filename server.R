@@ -1,12 +1,9 @@
 source('global.R')
 source('multipleDependentSelectizeArguments.R')
 
+HUCS <- readOGR('data','BRRO')
 
-load_data <- function() {
-  Sys.sleep(2)
-  shinyjs::hide("loading_page")
-  shinyjs::show("main_content")
-}
+
 
 
 
@@ -23,19 +20,29 @@ shinyServer(function(input, output, session) {
   basin_filter <- shiny::callModule(dynamicSelect, "basin", level3_filter, "Basin")#level3_filter()$Basin)
   watershed_filter <- shiny::callModule(dynamicSelect, "watershed", basin_filter, "Huc6_Vahu6")#year_filter()$Basin)
   
-  callModule(stationMap, "watershedMap",watershed_filter)
+  callModule(stationMap, "watershedMap",watershed_filter,HUCS)
   
   output$WSHDselectedElementsTable <- DT::renderDataTable({
-    if(input$radio == 'Watershed Information'){datatable(watershed_filter())}})
+    if(input$radio == 'Watershed Information'){
+      DT::datatable(watershed_filter(),
+                options = list(scrollX = TRUE))}})
   
   
   stationID_filter <- shiny::callModule(dynamicSelect, "stationID", the_data, "FDT_STA_ID" )
   
-  callModule(stationMap, "stationMap",stationID_filter)
+  callModule(stationMap, "stationMap",stationID_filter,HUCS)
   
   output$STATIONIDselectedElementsTable <- DT::renderDataTable({
-    if(input$radio == 'StationID'){datatable(stationID_filter())}})
+    if(input$radio == 'StationID'){
+      DT::datatable(stationID_filter(),
+                options = list(scrollX = TRUE))}})
   
+  output$allDataTable <- DT::renderDataTable({
+    DT::datatable(BRRO_sites,
+                  options = list(scrollX = TRUE,
+                                 pageLength = 5,
+                                 lengthMenu = list(c(5,25, 50, -1), list('5', '25', '50', 'All'))))})
+    
   
   
   

@@ -31,12 +31,9 @@ shinyUI(fluidPage(theme = "yeti.css",
                                    DT::dataTableOutput("WSHDselectedElementsTable")),
                           tabPanel("StationID Results", 
                                    stationMapUI("stationMap"),
-                                   DT::dataTableOutput("STATIONIDselectedElementsTable")
-                                   #bootstrapPage(div(class="outer",
-                                    #                 tags$style(type ="text/css",".outer {position: fixed; top: 75px; left: 0; right: 0; bottom: 0; overflow-y: scroll; padding: 0}"),
-                                     #                br(),br(),))
-                                                     #leafletOutput("stationMap")
-                          )
+                                   DT::dataTableOutput("STATIONIDselectedElementsTable")),
+                          tabPanel("All Stations Table",
+                                   DT::dataTableOutput("allDataTable"))
                         ))
                     ))
                   
