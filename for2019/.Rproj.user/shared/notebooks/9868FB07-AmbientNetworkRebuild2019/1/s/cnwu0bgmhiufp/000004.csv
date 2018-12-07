@@ -1,4 +1,0 @@
-"0","# BRRO watershed sampling responsibilities (from Mary)"
-"0","BRRO_HUC6 <- read_excel('data/BRROHUC6.xlsx')"
-"0","# Where BRRO has sampled since 2011 (Emma built from Roger's conventionals 2011-2016 and additional conventional pull 2017- Nov 5 2018)"
-"0","conventionals <- readRDS('data/BRROdata2011toNov2018.RDS')"

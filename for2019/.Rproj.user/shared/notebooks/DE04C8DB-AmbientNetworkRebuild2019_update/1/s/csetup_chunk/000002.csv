@@ -1,7 +1,0 @@
-"0","knitr::opts_chunk$set(echo = FALSE)"
-"0","library(tidyverse)"
-"0","library(readxl)"
-"0","library(DT)"
-"0","library(rgdal)"
-"0","library(leaflet)"
-"0","library(mapview)"
