@@ -1,0 +1,13 @@
+"0","HUCS@data <- mutate(HUCS@data, 
+                    AllWatersheds = 'probably cool', 
+                    IR2020review = ifelse(VAHU6 %in% IR2020$VAHU6, 
+                                          'Review Watershed for Sample Needs','probably cool'),
+                    IR2022review = ifelse(VAHU6 %in% IR2022$VAHU6, 
+                                          'Review Watershed for Sample Needs','probably cool'),
+                    LarryReview = ifelse(VAHU6 %in% larryJustBRRO$VAHU6, 
+                                          'Review Watershed for Sample Needs','probably cool'),
+                    Mary= ifelse(VAHU6 %in% Mary$VAHU6, 'Review Watershed for Sample Needs','probably cool'))
+"
+"2","Error in mutate_impl(.data, dots) : 
+  Evaluation error: $ operator is invalid for atomic vectors.
+"

@@ -1,0 +1,3 @@
+"0","  yearsSampled <- unique(dat$FDT_YEAR)
+"
+"2","Unknown or uninitialised column: 'FDT_YEAR'."

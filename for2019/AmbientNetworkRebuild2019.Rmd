@@ -1,0 +1,256 @@
+---
+title: "Ambient Network Rebuild 2019"
+author: "Emma Jones"
+date: "November 5, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(readxl)
+library(DT)
+library(rgdal)
+library(leaflet)
+library(mapview)
+
+```
+
+This script takes users through the process of incorporating former SCRO into BRRO's annual ambient monitoring plan. 
+
+First, we need to see where former WCRO and SCRO have been sampling each year in a table format, then we can see it in a map format.
+
+```{r bringInData}
+# BRRO watershed sampling responsibilities (from Mary)
+BRRO_HUC6 <- read_excel('data/BRROHUC6.xlsx')
+
+# Where BRRO has sampled since 2011 (Emma built from Roger's conventionals 2011-2016 and additional conventional pull 2017- Nov 5 2018)
+conventionals <- readRDS('data/BRROdata2011toNov2018.RDS')
+```
+
+```{r makeLarryTable}
+# split and run metrics to get unique stations and sampling stats associated
+BRROdatalist <- split(conventionals,f=conventionals$FDT_STA_ID) # Split before FDT_STA_ID becomes factor
+
+BRROdata_sites <- data.frame(FDT_STA_ID=NA,STA_LV3_CODE=NA,STA_LV1_CODE=NA,STA_REC_CODE=NA,Deq_Region=NA,
+                             STA_DESC=NA,FDT_SSC_CODE=NA,FDT_SPG_CODE=NA,STA_LV2_CODE=NA,Latitude=NA,
+                             Longitude=NA,Majorbasincode=NA,Majorbasinname=NA,Basin=NA,Subbasin=NA,
+                             Huc6_Huc_8=NA,Huc6_Huc_8_Name=NA,Huc6_Name=NA,Huc6_Huc_12=NA,Huc6_Huc_12_Name=NA,
+                             Huc6_Vahu5=NA,Huc6_Vahu6=NA,STA_CBP_NAME=NA,nObservations=NA,yearsSampled=NA,
+                             nYearsSampled=NA, n_Samples_2011=NA, n_Samples_2012=NA, n_Samples_2013=NA,
+                             n_Samples_2014=NA, n_Samples_2015=NA, n_Samples_2016=NA, n_Samples_2017=NA, 
+                             n_Samples_2018=NA,n_Samples_IR2018=NA, n_Samples_IR2020=NA, n_Samples_IR2022=NA)
+template <- BRROdata_sites[,c(1,27:34)]
+
+for(i in 1:length(BRROdatalist)){
+  dat <- BRROdatalist[i][[1]]
+  nObservations <- nrow(dat)
+  yearsSampled <- unique(dat$FDT_YEAR)
+  nYearsSampled <- length(yearsSampled)
+  FDT_SPG_CODEall <- paste(as.character(unique(dat$FDT_SPG_CODE)), collapse = ', ') # combine different sampling codes if present
+  
+  # Find number of samples per year, which year, and type of sampling occurred at each site
+  dat1 <- dat %>%
+    group_by(FDT_STA_ID, FDT_YEAR, FDT_SPG_CODE) %>%
+    summarise(nSamples = n(),
+              SampleCodes = toString(unique(FDT_SPG_CODE))) 
+  dat1.1 <- dat1 %>%
+    mutate(newColumnNames = paste('n_Samples_',FDT_YEAR,sep=''),
+           nSamples = paste(nSamples, SampleCodes, sep = ' : ')) %>%
+    # In case multiple sample codes per single year
+    group_by(FDT_STA_ID, newColumnNames) %>%
+    mutate(real_nSamples = paste0(nSamples, collapse = " | ")) %>%
+    ungroup() %>%
+    distinct(FDT_STA_ID, newColumnNames, real_nSamples) %>%
+    spread(newColumnNames, real_nSamples)
+  # make sure all necessary columns are present
+  dat1.2 <- template[is.na(match(names(template),names(dat1.1)))]
+  dat1.3 <- data.frame(dat1.1, dat1.2)[,order(names(template))] 
+  
+  # Find number of samples in IR windows 
+  dat2018 <- filter(dat1,FDT_YEAR >=2011 & FDT_YEAR <= 2016) %>%
+    ungroup() %>%
+    mutate(nSamplesIR = sum(nSamples)) %>%
+    group_by(FDT_STA_ID, FDT_SPG_CODE) %>%
+    mutate(nSampleTypeIR = sum(nSamples)) %>%
+    distinct(FDT_STA_ID, nSampleTypeIR) %>%
+    ungroup() %>%
+    add_row(FDT_STA_ID= .$FDT_STA_ID[1], FDT_SPG_CODE= 'Total',
+            nSampleTypeIR=sum(.$nSampleTypeIR)) %>%
+    group_by(FDT_STA_ID) %>%
+    mutate(n_Samples_IR2018 = paste0(FDT_SPG_CODE,": ",nSampleTypeIR, collapse = " | ")) %>%
+    distinct(FDT_STA_ID, n_Samples_IR2018)
+  dat2020 <- filter(dat1,FDT_YEAR >=2013 & FDT_YEAR <= 2018)%>%
+    ungroup() %>%
+    mutate(nSamplesIR = sum(nSamples)) %>%
+    group_by(FDT_STA_ID, FDT_SPG_CODE) %>%
+    mutate(nSampleTypeIR = sum(nSamples)) %>%
+    distinct(FDT_STA_ID, nSampleTypeIR) %>%
+    ungroup() %>%
+    add_row(FDT_STA_ID= .$FDT_STA_ID[1], FDT_SPG_CODE= 'Total',
+            nSampleTypeIR=sum(.$nSampleTypeIR)) %>%
+    group_by(FDT_STA_ID) %>%
+    mutate(n_Samples_IR2020 = paste0(FDT_SPG_CODE,": ",nSampleTypeIR, collapse = " | ")) %>%
+    distinct(FDT_STA_ID, n_Samples_IR2020)
+  dat2022 <- filter(dat1,FDT_YEAR >=2015 & FDT_YEAR <= 2020)%>%
+    ungroup() %>%
+    mutate(nSamplesIR = sum(nSamples)) %>%
+    group_by(FDT_STA_ID, FDT_SPG_CODE) %>%
+    mutate(nSampleTypeIR = sum(nSamples)) %>%
+    distinct(FDT_STA_ID, nSampleTypeIR) %>%
+    ungroup() %>%
+    add_row(FDT_STA_ID= .$FDT_STA_ID[1], FDT_SPG_CODE= 'Total',
+            nSampleTypeIR=sum(.$nSampleTypeIR)) %>%
+    group_by(FDT_STA_ID) %>%
+    mutate(n_Samples_IR2022 = paste0(FDT_SPG_CODE,": ",nSampleTypeIR, collapse = " | ")) %>%
+    distinct(FDT_STA_ID, n_Samples_IR2022)
+  
+  
+  dat <- mutate(dat,FDT_SPG_CODE = FDT_SPG_CODEall,
+                nObservations = nObservations,
+                yearsSampled = toString(yearsSampled), # another way to collapse strings to single string
+                nYearsSampled = nYearsSampled)%>%
+    select(-c(FDT_DATE_TIME,FDT_DATE,FDT_YEAR))%>% #remove redundant date/time info
+    filter(row_number()==1) %>%
+    left_join(dat1.3) %>%
+    left_join(dat2018) %>%
+    left_join(dat2020) %>%
+    left_join(dat2022) %>%
+    mutate_if(is.factor,as.character) # change factors to character to easily attach to BRROdata_sites without losing info
+
+  
+  BRROdata_sites[i,] <- dat
+}
+# REorder columns to make it easier to read
+BRROdata_sites <- select(BRROdata_sites,FDT_STA_ID,Huc6_Vahu6,FDT_SPG_CODE,nObservations,yearsSampled,nYearsSampled,
+                         n_Samples_2011, n_Samples_2012, n_Samples_2013, n_Samples_2014, n_Samples_2015, 
+                         n_Samples_2016, n_Samples_2017, n_Samples_2018,n_Samples_2018,n_Samples_IR2018, 
+                         n_Samples_IR2020, n_Samples_IR2022,everything())
+
+#write.csv(BRROdata_sites,'data/BRROdata_sites2011_Nov2018.csv',row.names = F)
+# Clean up workspace
+rm(list=setdiff(ls(), c("BRRO_HUC6",'BRROdata_sites','conventionals')))
+```
+
+
+
+Above is where we have sampled since 2011, but where have we not sampled where we need to?
+
+```{r bringInAssessmentMary}
+BRROdata_sites2 <- suppressMessages(read_csv('data/BRROdata_sites2011_Nov2018.csv'))
+
+BRROrecap <- select(BRROdata_sites2, FDT_STA_ID, Huc6_Vahu6, FDT_SPG_CODE,
+                    yearsSampled,nYearsSampled,
+                    n_Samples_IR2018,n_Samples_IR2020,n_Samples_IR2022) %>%
+  mutate(VAHU6 = Huc6_Vahu6)
+
+missingHUCs <- left_join(BRRO_HUC6,BRROrecap, by='VAHU6')
+
+```
+
+Looks like we have been everywhere Mary needs us to go. Why only 776 and not 930 rows though?
+
+```{r matching}
+thingsWeSampledButNotResponsibleFor <- filter(BRROrecap, !(FDT_STA_ID %in% missingHUCs$FDT_STA_ID))
+unique(thingsWeSampledButNotResponsibleFor$FDT_STA_ID)
+unique((thingsWeSampledButNotResponsibleFor$VAHU6))
+```
+
+
+```{r spatialData}
+HUCS <- readOGR('data','BRRO')
+
+nrow(filter(HUCS@data, VAHU6 %in% BRRO_HUC6$VAHU6))
+nrow(filter(HUCS@data, !(VAHU6 %in% BRRO_HUC6$VAHU6)))
+Mary <- filter(HUCS@data, !(VAHU6 %in% BRRO_HUC6$VAHU6)) # these are the watersheds that Mary doesn't have as BRRO needing to sample but are attributed to BRRO in Assessment layer. Need attention.
+
+nrow(filter(BRRO_HUC6, VAHU6 %in% HUCS@data$VAHU6))
+filter(BRRO_HUC6, !(VAHU6 %in% HUCS@data$VAHU6))
+```
+
+
+```{r IRneeds}
+IR2020 <- BRROrecap %>%
+  group_by(VAHU6) %>%
+  summarise(needSomething2020=sum(!is.na(n_Samples_IR2020))) %>%
+  filter(needSomething2020 == 0 ) %>%
+  left_join(BRRO_HUC6, by= 'VAHU6')
+
+
+
+# if NA in VAHU5 then no info in Mary's table about us needing to sample but if there is data then that means that we haven't been there and need data from watershed for 2020 IR
+
+View(filter(BRROrecap, is.na(n_Samples_IR2020)))
+
+
+IR2022 <- BRROrecap %>%
+  group_by(VAHU6) %>%
+  summarise(needSomething2022=sum(!is.na(n_Samples_IR2022))) %>%
+  filter(needSomething2022 == 0 ) %>%
+  left_join(BRRO_HUC6, by= 'VAHU6')
+
+HUCS@data <- mutate(HUCS@data, 
+                    AllWatersheds = 'probably cool', 
+                    IR2020review = ifelse(VAHU6 %in% IR2020$VAHU6, 
+                                          'Review Watershed for Sample Needs','probably cool'),
+                    IR2022review = ifelse(VAHU6 %in% IR2022$VAHU6, 
+                                          'Review Watershed for Sample Needs','probably cool'),
+                    Mary= ifelse(VAHU6 %in% Mary$VAHU6, 'Review Watershed for Sample Needs','probably cool'))
+
+#writeOGR(obj=HUCS, dsn="data", layer="HUCS_EVJ", driver="ESRI Shapefile") 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Try to build map
+
+
+```{r leaflet}
+val2 <- c('Review Watershed for IR Sample Needs','probably cool')
+pal2 <- colorFactor(c("yellow", "gray"),levels=val2, ordered = T)
+ 
+
+
+leaflet(BRRO_sites2) %>%
+      addProviderTiles(providers$OpenStreetMap,group='Open Street Map')%>%
+      addProviderTiles(providers$Esri.WorldImagery,group='Esri World Imagery')%>%
+      addProviderTiles(providers$Stamen.TerrainBackground,group='Stamen Terrain Background')%>%
+      addCircleMarkers(data=BRRO_sites2,~Longitude,~Latitude,radius=5,
+                       color='black',fillOpacity=1,stroke=0,
+                       group="All Stations",layerId=~Latitude,
+                       popup=popupTable(BRRO_sites2,
+                                        zcol=c("FDT_STA_ID","Huc6_Vahu6","FDT_SPG_CODE",
+                                               "nObservations","yearsSampled")))%>% hideGroup('All Stations')%>%
+  
+  addPolygons(data=HUCS_EVJ,color=~pal2(IR2020r),
+                  layerId=~HUCS_EVJ@data$VAHUC6,
+                  fill=0.1,stroke=0.2,group="Watershed Query") %>%#,
+       
+      addPolygons(data=HUCS,color='gray',fill=0.1,stroke=0.2,group="All Watersheds",
+                  popup=paste(sep='<br/>',
+                              paste("HUC6: ",HUCS@data$VAHU6,sep=""),HUCS@data$VaName))%>%hideGroup('All Watersheds')%>%
+      addLayersControl(baseGroups=c('Open Street Map','Esri World Imagery','Stamen Terrain Background'),
+                       overlayGroups=c('All Stations','All Watersheds'),
+                       options=layersControlOptions(collapsed=T),
+                       position='topleft')%>%
+      addMiniMap(tiles = providers$OpenStreetMap,toggleDisplay = TRUE)%>%
+      mapview::addMouseCoordinates(style='basic')
+```

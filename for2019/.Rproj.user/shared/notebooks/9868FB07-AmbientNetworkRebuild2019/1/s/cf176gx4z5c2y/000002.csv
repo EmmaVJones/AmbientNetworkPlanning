@@ -1,0 +1,174 @@
+"0","writeOGR(obj=HUCS, dsn=""data"", layer=""HUCS_EVJ"", driver=""ESRI Shapefile"") 
+"
+"2","Field names abbreviated for ESRI Shapefile driver"
+"2","W"
+"2","arning 1: Value 124100113.554000005 of field Shap_Ar of feature 14 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 140558692.199000001 of field Shap_Ar of feature 29 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 108699581.443000004 of field Shap_Ar of feature 44 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 103119464.412 of field Sh"
+"2","ap_Ar of feature 52 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 137204390.720999986 of field Shap_Ar of feature 55 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 153851501.914999992 of field Shap_Ar of feature 61 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 151420665.782000005 of field Shap_Ar of feature 65 not successfully writ"
+"2","ten. Possibly due to too larger number with respect to field width
+Warning 1: Value 163745391.085000008 of field Shap_Ar of feature 70 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 152250304.367000014 of field Shap_Ar of feature 74 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 100721306.944999993 of field Shap_Ar of feature 75 not successfully written. Possibly due to too larger number wi"
+"2","th respect to field width
+Warning 1: Value 121373066.548999995 of field Shap_Ar of feature 76 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 100426970.431999996 of field Shap_Ar of feature 79 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 104133645.335999995 of field Shap_Ar of feature 80 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Val"
+"2","ue 104041241.756999999 of field Shap_Ar of feature 84 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 152895273.268000007 of field Shap_Ar of feature 88 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 126779299.949000001 of field Shap_Ar of feature 90 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 133124879.037 of field Shap_Ar of feat"
+"2","ure 91 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 104120870.197999999 of field Shap_Ar of feature 94 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 114934907.723000005 of field Shap_Ar of feature 96 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 124677895.381999999 of field Shap_Ar of feature 97 not successfully written. Possibly"
+"2"," due to too larger number with respect to field width
+Warning 1: Value 125774250.393000007 of field Shap_Ar of feature 99 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 129757044.284999996 of field Shap_Ar of feature 101 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 143349206.191000015 of field Shap_Ar of feature 104 not successfully written. Possibly due to too larger number with respect "
+"2","to field width
+Warning 1: Value 124113551.415000007 of field Shap_Ar of feature 105 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 140965320.539000005 of field Shap_Ar of feature 109 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 117942753.240999997 of field Shap_Ar of feature 111 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 10105"
+"2","2729.022 of field Shap_Ar of feature 112 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 117869611.584000006 of field Shap_Ar of feature 113 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 159014130.951999992 of field Shap_Ar of feature 114 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 108136781.724000007 of field Shap_Ar of feature 1"
+"2","16 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 111339468.843999997 of field Shap_Ar of feature 119 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 111948811.149000004 of field Shap_Ar of feature 120 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 107647463.172000006 of field Shap_Ar of feature 122 not successfully written. Possibly "
+"2","due to too larger number with respect to field width
+Warning 1: Value 146157913.217000008 of field Shap_Ar of feature 125 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 153669042.004000008 of field Shap_Ar of feature 134 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 157233558.838999987 of field Shap_Ar of feature 135 not successfully written. Possibly due to too larger number with respect "
+"2","to field width
+Warning 1: Value 106384008.344999999 of field Shap_Ar of feature 137 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 128011471.134000003 of field Shap_Ar of feature 140 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 115813204.743000001 of field Shap_Ar of feature 141 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 15573"
+"2","8786.145999998 of field Shap_Ar of feature 143 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 110374984.486000001 of field Shap_Ar of feature 149 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 122466219.583000004 of field Shap_Ar of feature 152 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 151963910.981000006 of field Shap_Ar of fea"
+"2","ture 156 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 146190529.034999996 of field Shap_Ar of feature 157 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 120715272.548999995 of field Shap_Ar of feature 159 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 110227341.722000003 of field Shap_Ar of feature 163 not successfully written. Pos"
+"2","sibly due to too larger number with respect to field width
+Warning 1: Value 149983908.720999986 of field Shap_Ar of feature 165 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 129454045.597000003 of field Shap_Ar of feature 168 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 114861539.381999999 of field Shap_Ar of feature 175 not successfully written. Possibly due to too larger number with re"
+"2","spect to field width
+Warning 1: Value 139355399.807000011 of field Shap_Ar of feature 176 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 117956303.834000006 of field Shap_Ar of feature 181 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 113696767.099999994 of field Shap_Ar of feature 183 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value"
+"2"," 110898913.819000006 of field Shap_Ar of feature 184 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 140115048.909000009 of field Shap_Ar of feature 187 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 115799445.223000005 of field Shap_Ar of feature 189 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 151938187.023000002 of field Shap_Ar "
+"2","o"
+"2","f"
+"2"," feature 193 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 105114266.012999997 of field Shap_Ar of feature 194 not successfully written. Possibly due to too larger number with respect to fie"
+"2","ld width
+Warning 1: Value 139034773.925999999 of field Shap_Ar of feature 195 not successfully written. Possibly due to too larger number with respec"
+"2","t to field width
+"
+"2","Warning 1: Value 126201201.645999998 of field Shap_Ar of feature 197 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 147001"
+"2","179.99000001 of field Shap_Ar of feature 198 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 163963216.331999987"
+"2"," of field Shap_Ar of feature 202 not successfully written. Possibly due to too larger number with respect to field width
+Warnin"
+"2","g 1: Value 104775747.854000002 of field Shap_Ar of feature 203 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 143275354.875 of field Shap_Ar of feature 204 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 140358086.654000014 of field Shap_Ar of feature 209 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","W"
+"2","arning 1: Value 132546083.636999995 of field Shap_Ar of feature 212 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 128257200.569999993 of field Shap_Ar of feature 213 not successfully written. Possibly due to too larger number with respect t"
+"2","o field width
+Warning 1: "
+"2","Value 123967098.138999999 of field Shap_Ar of feature 215 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","W"
+"2","arning 1: Value 132752863.052000001 of field Shap_Ar of feature 219 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 136764157.442000002 of field Shap_Ar of feature 220 not successfully written. P"
+"2","ossibly due to too larger number with respect to field width
+Warning 1: Value 101752345.905000001 of field Shap_Ar of feature 221 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 151602195.303000003 of field Shap_Ar of feature 223 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 106655784.362000003 of field Shap_Ar of feature 224 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 138321218.136999995 of field Shap_Ar of feature 226 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 134309070.108999997 of field Shap_Ar of feature 227 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 127539392.383000001 of field Shap_Ar of feature 230 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 120056397.166999996 of field Shap_Ar of feature 232 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 157679555.80399999 of field Shap_Ar of feature 234 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 100529735.726999998 of field Shap_Ar of feature 235 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 118331434.2590"
+"2","00003 of field Shap_Ar of feature 236 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 135324358.411000013 of field Shap_Ar of "
+"2","feature 237 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 113485091.104000002 of field Shap_Ar of feature 240 not successfully written. Possibly due to too larger number with respect to field width
+W"
+"2","arning 1: Value 120535776.013999999 of field Shap_Ar of feature 241 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 140657256.157999992 of field Shap_Ar of feature 243 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 131473295.709999993 of field Shap_Ar of feature 246 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 161696434.272000015 of field Shap_Ar of feature 248 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","W"
+"2","arning 1: Value 107690490.487000003 of field Shap_Ar of feature 251 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","W"
+"2","arning 1: Value 125652636.032000005 of field Shap_Ar of feature 256 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 163699810.560000002 of field Shap_Ar of feature 259 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 135519046.842999995 of field Shap_Ar of feature 260 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 124816008.489999995 of field Shap_Ar of feature 261 not successfully written. Possibly due to to"
+"2","o larger number with respect to field width
+Warning 1: Value 153495464.969999999 of field Shap_Ar of feature 262 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 146273146.729999989 of field Shap_Ar of feature 264 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 126960700.056999996 of field "
+"2","Shap_Ar of feature 267 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 115466254.397 of field Shap_Ar of feature 269 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","W"
+"2","arning 1: Value 149268762.074999988 of field Shap_Ar of feature 274 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 116508511.401999995 of field Shap_Ar of feature 279 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","Warning 1: Value 127844306.773000002 of field Shap_Ar of feature 280 not successfully written. Possibly due to too larger number with respect to field width
+"
+"2","W"
+"2","arning 1: Value 121612820.755999997 of field Shap_Ar of feature 288 not successfully written. Possibly due to too larger number with respect to field width
+Warning 1: Value 102943157.622999996 of field Shap_Ar of feature 289 not successfully written. Possibly due to too larger number with respect to field wi"
+"2","dth
+Warning 1: Value 101668006.905000001 of field Shap_Ar of feature 291 not successfully writte"
+"2","n. Possibly due to too larger number with respect to field width
+Warning 1: Value 117510110.113000005 of field Shap_Ar of feature 292 not successfully written. Possibly due to too larger number with respect to field width
+"

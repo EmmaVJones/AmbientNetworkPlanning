@@ -1,0 +1,10 @@
+"0","filter(BRRO_HUC6, !(VAHU6 %in% HUCS@data$VAHU6))
+"
+"1","[38;5;246m# A tibble: 1 x 4[39m
+"
+"1","  VAHU5 VAHU6 ALB_ACRES Notes
+"
+"1","  [3m[38;5;246m<chr>[39m[23m [3m[38;5;246m<chr>[39m[23m     [3m[38;5;246m<dbl>[39m[23m [3m[38;5;246m<chr>[39m[23m
+"
+"1","[38;5;250m1[39m JU-E  JU23     [4m2[24m[4m1[24m542. VRO  
+"
