@@ -1,0 +1,25 @@
+"VAHU6","Region","Huc6_Vahu6","FDT_SPG_CODE","nObservations","yearsSampled","nYearsSampled","n_Samples_2013","n_Samples_2014","n_Samples_2015","n_Samples_2016","n_Samples_2017","n_Samples_2018","n_Samples_2019","n_Samples_2016_2019","n_Samples_IR2020","n_Samples_IR2022","n_Samples_IR2024"
+"JM06","BRRO","JM06","AW, RB",14,"2014, 2015",2,NA,"12 : AW","2 : RB",NA,NA,NA,NA,NA,"AW: 12 | RB: 2 | Total: 14","RB: 2 | Total: 2",NA
+"JM16","BRRO","JM16","AW, RB",18,"2015, 2014",2,NA,"4 : RB","12 : AW | 2 : RB",NA,NA,NA,NA,NA,"RB: 6 | AW: 12 | Total: 18","AW: 12 | RB: 2 | Total: 14",NA
+"NE48","BRRO","NE48","AW",12,"2015",1,NA,NA,"12 : AW",NA,NA,NA,NA,NA,"AW: 12 | Total: 12","AW: 12 | Total: 12",NA
+"NE53","BRRO","NE53","AW, QA",12,"2015",1,NA,NA,"11 : AW | 1 : QA",NA,NA,NA,NA,NA,"AW: 11 | QA: 1 | Total: 12","AW: 11 | QA: 1 | Total: 12",NA
+"NE63","BRRO","NE63","PA, QA, FP",13,"2015",1,NA,NA,"1 : FP | 10 : PA | 2 : QA",NA,NA,NA,NA,NA,"FP: 1 | PA: 10 | QA: 2 | Total: 13","FP: 1 | PA: 10 | QA: 2 | Total: 13",NA
+"RD08","BRRO","RD08","FP, PA, QA",14,"2015",1,NA,NA,"2 : FP | 11 : PA | 1 : QA",NA,NA,NA,NA,NA,"FP: 2 | PA: 11 | QA: 1 | Total: 14","FP: 2 | PA: 11 | QA: 1 | Total: 14",NA
+"RD37","BRRO","RD37","RB, AW",14,"2014, 2015",2,NA,"2 : RB","12 : AW",NA,NA,NA,NA,NA,"RB: 2 | AW: 12 | Total: 14","AW: 12 | Total: 12",NA
+"RD44","BRRO","RD44","FP, DR, RB",6,"2013, 2014, 2015",3,"1 : FP | 2 : RB","1 : DR | 1 : FP","1 : DR",NA,NA,NA,NA,NA,"FP: 2 | RB: 2 | DR: 2 | Total: 6","DR: 1 | Total: 1",NA
+"RD54","BRRO","RD54","AW",12,"2015",1,NA,NA,"12 : AW",NA,NA,NA,NA,NA,"AW: 12 | Total: 12","AW: 12 | Total: 12",NA
+"RD61","BRRO","RD61","AW, RB",14,"2013, 2015",2,"12 : AW",NA,"2 : RB",NA,NA,NA,NA,NA,"AW: 12 | RB: 2 | Total: 14","RB: 2 | Total: 2",NA
+"RD71","BRRO","RD71","AW",12,"2013",1,"12 : AW",NA,NA,NA,NA,NA,NA,NA,"AW: 12 | Total: 12",NA,NA
+"RD75","BRRO","RD75","AW, RB",14,"2014, 2015",2,NA,"12 : AW","2 : RB",NA,NA,NA,NA,NA,"AW: 12 | RB: 2 | Total: 14","RB: 2 | Total: 2",NA
+"RL21","BRRO","RL21","RB",1,"2015",1,NA,NA,"1 : RB",NA,NA,NA,NA,NA,"RB: 1 | Total: 1","RB: 1 | Total: 1",NA
+"RL22","BRRO","RL22","TM",12,"2013, 2014",2,"6 : TM","6 : TM",NA,NA,NA,NA,NA,NA,"TM: 12 | Total: 12",NA,NA
+"RL23","BRRO","RL23","AW",12,"2013",1,"12 : AW",NA,NA,NA,NA,NA,NA,NA,"AW: 12 | Total: 12",NA,NA
+"RU01","BRRO","RU01","AW",12,"2015",1,NA,NA,"12 : AW",NA,NA,NA,NA,NA,"AW: 12 | Total: 12","AW: 12 | Total: 12",NA
+"RU06","BRRO","RU06","AW, QA, FP",25,"2013, 2015",2,"12 : AW | 1 : FP",NA,"11 : AW | 1 : QA",NA,NA,NA,NA,NA,"AW: 23 | FP: 1 | QA: 1 | Total: 25","AW: 11 | QA: 1 | Total: 12",NA
+"RU44","BRRO","RU44","AW",12,"2015",1,NA,NA,"12 : AW",NA,NA,NA,NA,NA,"AW: 12 | Total: 12","AW: 12 | Total: 12",NA
+"RU46","BRRO","RU46","AW",12,"2014",1,NA,"12 : AW",NA,NA,NA,NA,NA,NA,"AW: 12 | Total: 12",NA,NA
+"RU49","BRRO","RU49","TM, IM",18,"2013, 2014, 2015",3,"6 : TM","6 : TM","6 : IM",NA,NA,NA,NA,NA,"TM: 12 | IM: 6 | Total: 18","IM: 6 | Total: 6",NA
+"RU50","BRRO","RU50","TM, IM, RB, PA, FP",34,"2013, 2014, 2015",3,"2 : RB | 6 : TM","6 : TM","2 : FP | 6 : IM | 12 : PA",NA,NA,NA,NA,NA,"RB: 2 | TM: 12 | FP: 2 | IM: 6 | PA: 12 | Total: 34","FP: 2 | IM: 6 | PA: 12 | Total: 20",NA
+"RU60","BRRO","RU60","AW",12,"2015",1,NA,NA,"12 : AW",NA,NA,NA,NA,NA,"AW: 12 | Total: 12","AW: 12 | Total: 12",NA
+"RU63","BRRO","RU63","AW",12,"2015",1,NA,NA,"12 : AW",NA,NA,NA,NA,NA,"AW: 12 | Total: 12","AW: 12 | Total: 12",NA
+"RU89","BRRO","RU89","AW",12,"2015",1,NA,NA,"12 : AW",NA,NA,NA,NA,NA,"AW: 12 | Total: 12","AW: 12 | Total: 12",NA

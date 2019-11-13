@@ -1,0 +1,14 @@
+---
+title: "How to Run ambient update"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This document walks you through the scripts in this project to repeat analysis year to year. 
+
+1) get updated conventionals pull from Roger (until R had direct access to CEDS)
+2) organize data (preprocessData.R)
+3) rebuild ambient app (AmbientNetworkRebuild2020.Rmd)

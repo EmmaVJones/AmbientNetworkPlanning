@@ -1,0 +1,3 @@
+This repository holds all necessary data and code to update to the 2019 ambient planning app to the 2020 version. The data has been compiled from Roger's 2020 conventionals data pull and a special data request for all available data for 2019 (up until November, 2019). 
+
+The application highlights HUC6 level watersheds that require sampling attention for the upcoming year based on recent sampling statistics. It offers some planning tools to prepare for future IR windows such that each huc will have some data to assess.
