@@ -8,3 +8,10 @@
 for2020/data/CEDSWQM_CONVENTIONALS_2018+.xlsx
 for2020/data/BRROdata2013toNov2019.RDS
 for2020/data/BRROdata2013toNov2019_sites.RDS
+
+
+for2022/data/
+for2022/config.yml
+
+
+*.yml
