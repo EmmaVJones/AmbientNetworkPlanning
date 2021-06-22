@@ -20,6 +20,7 @@ library(inlmisc)
 library(DT)
 library(lubridate)
 library(readxl)
+library(pins)
 
 # Get configuration settings
 conn <- config::get("connectionSettings")
@@ -51,7 +52,208 @@ After this data is summarized, we will pull the 2021 sample information (to date
 
 By mapping this information we can quickly identify areas that might be lacking data for upcoming assessment windows and correct for potential data gaps.
 
+```{r bring in precompiled spatial data}
+WQM_Stations_Spatial <- pin_get("ejones/WQM-Stations-Spatial", board = "rsconnect") %>%
+  rename("Basin_Name" = "Basin_Code")   # can't have same name different case when using sqldf
+WQM_Stations_Spatial_BRRO <-  filter(WQM_Stations_Spatial, ASSESS_REG == 'BRRO')
+```
+
+
 ```{r conventionals IR2022}
+# Takes a while so only do this once and save BRRO subset locally
+# conventionals <- read_excel('C:/HardDriveBackup/R/GitHub/IR2022/2.organizeMetadata/data/final2022data/CEDSWQM/CONVENTIONALS_20210504.xlsx') %>%
+#   # get it in real conventionals format
+#   rename('Deq_Region'='VADEQ_ADMIN_REGION', 'STA_REC_CODE' = 'MONITORING_REGION',
+#          'ECOLI' = 'E.COLI_ECOLI_CFU/100mL', 'ENTEROCOCCI' = 'ENTEROCOCCI_31649_NO/100mL')  %>%
+#   ## filter to just BRRO, very broad here using station retrieve code and region code
+#   #filter(STA_REC_CODE == 'BRRO' | Deq_Region == 'Blue Ridge')
+#   left_join(WQM_Stations_Spatial, by = c("FDT_STA_ID" = 'StationID')) %>% 
+#   filter(ASSESS_REG == 'BRRO')
+# saveRDS(conventionals, 'data/IR2022conventionalsBRRO.RDS')
+conventionals <- readRDS('data/IR2022conventionalsBRRO.RDS')  
 
 ```
 
+
+Now pull sample info for 2021 sample data from CEDS.
+
+```{r 2021 sample data from CEDS}
+sampleWindow <- c(as.Date('2021-01-01'), as.Date(Sys.Date()))
+windowInfo <- pool %>% tbl( in_schema("wqm", "Wqm_Field_Data_View")) %>%
+  filter(Fdt_Sta_Id %in% !! WQM_Stations_Spatial_BRRO$StationID &
+           between(as.Date(Fdt_Date_Time), !! sampleWindow[1], !! sampleWindow[2])) %>%
+  as_tibble() 
+
+```
+
+
+Now we can combine these datasets and summarize sample information
+
+```{r combine data and summarize}
+
+windowSampleInfo <- conventionals %>% 
+  dplyr::select(FDT_STA_ID, FDT_SPG_CODE, FDT_DATE_TIME ) %>% 
+  bind_rows(
+    dplyr::select(windowInfo, FDT_STA_ID = Fdt_Sta_Id, FDT_SPG_CODE = Fdt_Spg_Code, FDT_DATE_TIME = Fdt_Date_Time)) %>% 
+  mutate(Year = year(FDT_DATE_TIME)) %>% #paste0(year(FDT_DATE_TIME)), ' Sample n') %>% 
+  group_by(FDT_STA_ID, Year) %>% 
+  summarise(`Sample n` = n(),
+            `SPG codes` = paste(unique(FDT_SPG_CODE),  collapse = ' | ')) %>% 
+  mutate(IR2022 = case_when(Year %in% c(2015:2020) ~ 'IR 2022',
+                                       TRUE ~ as.character(NA)),
+         IR2024 = case_when(Year %in% c(2017:2022) ~ 'IR 2024',
+                                       TRUE ~ as.character(NA)),
+         IR2026 = case_when(Year %in% c(2019:2024) ~ 'IR 2026',
+                                       TRUE ~ as.character(NA))) %>% 
+  group_by(FDT_STA_ID, IR2022 ) %>% 
+  mutate(`IR2022 Sample n` = case_when(IR2022 == 'IR 2022' ~ sum(`Sample n`))) %>% 
+   ungroup() %>% group_by(FDT_STA_ID, IR2024 ) %>% 
+  mutate(`IR2024 Sample n` = case_when(IR2024 == 'IR 2024' ~ sum(`Sample n`))) %>% 
+  ungroup() %>%  group_by(FDT_STA_ID, IR2026 ) %>% 
+  mutate(`IR2026 Sample n` = case_when(IR2026 == 'IR 2026' ~ sum(`Sample n`))) %>% 
+  ungroup() %>% dplyr::select(-c(IR2022, IR2024, IR2026)) 
+
+windowSampleInfoSummary <- dplyr::select(windowSampleInfo, -c(`IR2022 Sample n`, `IR2024 Sample n`, `IR2026 Sample n`)) %>% 
+  group_by(FDT_STA_ID) %>% 
+  pivot_wider(names_from = 'Year', names_prefix = "Year", values_from = c('Sample n', 'SPG codes')) 
+
+
+#old skool rename of columns
+names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))] <-
+  paste(strsplit(names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))], '_') %>% 
+         map_chr(2),
+       strsplit(names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))], '_') %>% 
+         map_chr(1), sep = ' ')
+
+# rearrange column order to make sense
+windowSampleInfoFinalSummary <- windowSampleInfoSummary %>% 
+  select(sort(tidyselect::peek_vars())) %>% 
+  left_join(dplyr::select(windowSampleInfo, FDT_STA_ID, `IR2022 Sample n`, `IR2024 Sample n`, `IR2026 Sample n`) %>% 
+              pivot_longer(cols = c(`IR2022 Sample n`, `IR2024 Sample n`, `IR2026 Sample n`), names_to = 'window', values_to = 'value') %>% 
+              group_by(FDT_STA_ID, window) %>%
+              filter(value > 0) %>% ungroup() %>% 
+              group_by(FDT_STA_ID, window) %>% 
+              mutate(n = 1:n()) %>% 
+              filter(n == 1) %>% dplyr::select(-n) %>% 
+              pivot_wider(names_from = 'window', values_from = 'value'), by = 'FDT_STA_ID') %>% 
+  left_join(dplyr::select(WQM_Stations_Spatial, StationID:Sta_Desc, ASSESS_REG, VAHU6), by = c('FDT_STA_ID' = 'StationID')) %>% 
+  dplyr::select( FDT_STA_ID, Sta_Desc, ASSESS_REG, VAHU6, `IR2022 Sample n`, `IR2024 Sample n`,  `IR2026 Sample n`, everything()) %>% 
+  st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+           remove = T, # don't remove these lat/lon cols from df
+           crs = 4326)
+rm(conventionals);rm(windowInfo); rm(windowSampleInfo);rm(windowSampleInfoSummary)
+```
+
+
+### Process data gaps from summary information
+
+Next we need to identify VAHU6s that don't have adequate sample information for upcoming IR windows.
+
+```{r ir window summary}
+assessmentRegionsVAHU6 <- st_read( 'data/GIS/AssessmentRegions_VA84_basins.shp') %>% 
+ filter(ASSESS_REG == 'BRRO') %>% 
+  dplyr::select(VAHU6, ASSESS_REG)
+
+ir2022 <- left_join(assessmentRegionsVAHU6, 
+                    windowSampleInfoFinalSummary %>% 
+                      filter(!is.na(`IR2022 Sample n`)) %>% 
+                      group_by(VAHU6) %>% 
+                      summarise(`n Stations` = length(unique(FDT_STA_ID))) %>% 
+                      left_join(
+                        windowSampleInfoFinalSummary %>% 
+                          group_by(VAHU6) %>% 
+                          summarise(`n Samples` = sum(`IR2022 Sample n`, na.rm = T)) , by = 'VAHU6'  ) ,
+                    by = 'VAHU6') %>% 
+  mutate(IR2022 = as.factor(case_when(is.na(`n Stations`) ~ 'Need Station', 
+                            between(`n Samples`, 1, 9) ~ '< 10 samples',
+                            `n Samples` >9 ~ 'Fine')))
+#View(ir2022 %>% st_drop_geometry())
+
+
+ir2024 <- left_join(assessmentRegionsVAHU6, 
+                    windowSampleInfoFinalSummary %>% 
+                      filter(!is.na(`IR2024 Sample n`)) %>% 
+                      group_by(VAHU6) %>% 
+                      summarise(`n Stations` = length(unique(FDT_STA_ID))) %>% 
+                      left_join(
+                        windowSampleInfoFinalSummary %>% 
+                          group_by(VAHU6) %>% 
+                          summarise(`n Samples` = sum(`IR2024 Sample n`, na.rm = T)) , by = 'VAHU6'  ),
+                     by = 'VAHU6') %>% 
+  mutate(IR2024 = as.factor(case_when(is.na(`n Stations`) ~ 'Need Station', 
+                            between(`n Samples`, 1, 9) ~ '< 10 samples',
+                            `n Samples` >9 ~ 'Fine')))
+
+ir2026 <- left_join(assessmentRegionsVAHU6, 
+                    windowSampleInfoFinalSummary %>% 
+                      filter(!is.na(`IR2026 Sample n`)) %>% 
+                      group_by(VAHU6) %>% 
+                      summarise(`n Stations` = length(unique(FDT_STA_ID))) %>% 
+                      left_join(
+                        windowSampleInfoFinalSummary %>% 
+                          group_by(VAHU6) %>% 
+                          summarise(`n Samples` = sum(`IR2026 Sample n`, na.rm = T)) , by = 'VAHU6'  ) ,
+                    by = 'VAHU6') %>% 
+  mutate(IR2026 = as.factor(case_when(is.na(`n Stations`) ~ 'Need Station', 
+                            between(`n Samples`, 1, 9) ~ '< 10 samples',
+                            `n Samples` >9 ~ 'Fine')))
+View(ir2026 %>% st_drop_geometry())
+```
+
+
+
+### Visualize summary information
+
+```{r map}
+assessmentRegions <- st_read( 'data/GIS/AssessmentRegions_simple.shp')
+
+
+pal <- colorFactor(
+      palette = rainbow(7),
+      domain = assessmentRegions$ASSESS_REG)
+
+pal2 <- colorFactor(
+      palette = c('yellow', 'green','red'),
+      domain = levels(ir2022$IR2022))
+
+CreateWebMap(maps = c("Topo","Imagery","Hydrography"), collapsed = TRUE,
+             options= leafletOptions(zoomControl = TRUE,minZoom = 3, maxZoom = 20,
+                                     preferCanvas = TRUE)) %>%
+  setView(-79.1, 37.7, zoom=7)  %>%
+  addPolygons(data= assessmentRegions,  color = 'black', weight = 1,
+              fillColor= ~pal(assessmentRegions$ASSESS_REG), fillOpacity = 0.5,stroke=0.1,
+              group="Assessment Regions", label = ~ASSESS_REG) %>% hideGroup('Assessment Regions') %>%
+  addPolygons(data= assessmentRegionsVAHU6,  color = 'black', weight = 1,
+              fillColor= 'gray', fillOpacity = 0.5,stroke=0.1,
+              group="BRRO VAHU6's", label = ~VAHU6) %>% hideGroup("BRRO VAHU6's") %>%
+  addPolygons(data= ir2022,  color = 'black', weight = 1,
+              fillColor= ~pal2(ir2022$IR2022), fillOpacity = 0.5,stroke=0.1,
+              group="IR2022 VAHU6's", label = ~VAHU6,
+              popup = leafpop::popupTable(ir2022, zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR2022'))) %>% hideGroup("IR2022 VAHU6's") %>%
+  addPolygons(data= ir2024,  color = 'black', weight = 1,
+              fillColor= ~pal2(ir2024$IR2024), fillOpacity = 0.5,stroke=0.1,
+              group="IR2024 VAHU6's", label = ~VAHU6,
+              popup = leafpop::popupTable(ir2024, zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR2024'))) %>% hideGroup("IR2024 VAHU6's") %>%
+  addPolygons(data= ir2026,  color = 'black', weight = 1,
+              fillColor= ~pal2(ir2026$IR2026), fillOpacity = 0.5,stroke=0.1,
+              group="IR2026 VAHU6's", label = ~VAHU6,
+              popup = leafpop::popupTable(ir2026, zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR2026'))) %>% hideGroup("IR2026 VAHU6's") %>%
+
+  # addPolygons(data= ir2022,  color = 'black', weight = 1,
+  #             fillColor= 'red', fillOpacity = 0.5,stroke=0.1,
+  #             group="IR2022 Missing VAHU6's", label = ~VAHU6,
+  #             popup = leafpop::popupTable(ir2022, zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR2022'))) %>% 
+  # hideGroup("IR2022 Missing VAHU6's") %>%
+  # addPolygons(data= ir2024,  color = 'black', weight = 1,
+  #             fillColor= 'red', fillOpacity = 0.5,stroke=0.1,
+  #             group="IR2024 Missing VAHU6's", label = ~VAHU6,
+  #             popup = leafpop::popupTable(ir2024, zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR2024'))) %>% 
+  # hideGroup("IR2024 Missing VAHU6's") %>%
+  inlmisc::AddHomeButton(raster::extent(-83.89, -74.80, 36.54, 39.98), position = "topleft") %>%
+  addLayersControl(baseGroups=c("Topo","Imagery","Hydrography"),
+                   overlayGroups = c("Assessment Regions", "BRRO VAHU6's","IR2022 VAHU6's", "IR2024 VAHU6's",  "IR2026 VAHU6's"),
+                                     #"IR2022 Missing VAHU6's", "IR2024 Missing VAHU6's"),
+                   options=layersControlOptions(collapsed=T),
+                   position='topleft')     
+
+```
