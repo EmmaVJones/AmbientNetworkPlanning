@@ -163,18 +163,37 @@ shinyServer(function(input, output, session) {
 
     # reanalyze monitoring network by vahu6
     return(vahu6Layout(conventionals, windowInfoNew, WQM_Stations_Spatial, stationPlan()) %>% ungroup() %>% st_as_sf())    })
+  
+  newYear <- reactive({req(nrow(newMonitoring()) > 0)
+    filter_at(newMonitoring(), c(length(newMonitoring())-2), all_vars(!is.na(.))) %>% # grab second to last column, which should be the new year sample counts
+      st_as_sf() %>% 
+      mutate(UID = paste0(FDT_STA_ID,'/', unique(userUpload()$`Monitoring Year`)))}) 
  
   observe({req(nrow(newMonitoring()) > 0)
-    map_proxy_multi %>%
+    regionalMap_proxy %>%
       clearMarkers() %>%
       addCircleMarkers(data = newMonitoring(),
-                       color='blue', fillColor='green', radius = 4,
+                       color='green', fillColor='blue', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="All Stations",
+                       label = ~FDT_STA_ID, layerId = ~paste(FDT_STA_ID, 'new'),
+                       popup = leafpop::popupTable(newMonitoring(), zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6',
+                                                                           'IR2022 Sample n', 'IR2024 Sample n', 'IR2026 Sample n'))) %>% hideGroup('All Stations') %>% 
+      addCircleMarkers(data = newYear(),
+                       color='green', fillColor='blue', radius = 4,
                        fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="Proposed Monitoring Network",
-                       label = ~StationID, layerId = ~StationID,
-                       popup = leafpop::popupTable(newMonitoring(), zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
-                                                                           'IR2022 Sample n', 'IR2024 Sample n', 'IR2026 Sample n'))) })
-  
-  
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(newYear(), zcol=c('FDT_STA_ID','Sta_Desc', 'VAHU6', 
+                                                                     'Year2022 Sample n', 'Year2022 SPG codes'))) %>% # hardcoded for now, not ideal
+      
+      addLayersControl(baseGroups=c("Topo","Imagery","Hydrography"),
+                       overlayGroups = c("Assessment Regions", "BRRO VAHU6's","IR2022 VAHU6's", "IR2024 VAHU6's",  "IR2026 VAHU6's",
+                                         'All Stations', "2015 Stations","2016 Stations","2017 Stations","2018 Stations",
+                                         "2019 Stations","2020 Stations", "2021 Stations", "Proposed Monitoring Network"),
+                       #"IR2022 Missing VAHU6's", "IR2024 Missing VAHU6's"),
+                       options=layersControlOptions(collapsed=T),
+                       position='topleft') })
+
+
   
   #output$test <- renderPrint({ newMonitoring()})
   
