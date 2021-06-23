@@ -206,25 +206,25 @@ ir2026 <- left_join(assessmentRegionsVAHU6,
 # make individual layers and unique identifiers so the layerID's work
 x2015 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
   filter( !is.na(`Year2015 Sample n`)) %>% st_as_sf() %>% 
-  mutate(UID = paste0(FDT_STA_ID,'2015'))
+  mutate(UID = paste0(FDT_STA_ID,'/2015'))
 x2016 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
   filter( !is.na(`Year2016 Sample n`)) %>% st_as_sf() %>% 
-  mutate(UID = paste0(FDT_STA_ID,'2016'))
+  mutate(UID = paste0(FDT_STA_ID,'/2016'))
 x2017 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
   filter( !is.na(`Year2017 Sample n`)) %>% st_as_sf() %>% 
-  mutate(UID = paste0(FDT_STA_ID,'2017'))
+  mutate(UID = paste0(FDT_STA_ID,'/2017'))
 x2018 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
   filter( !is.na(`Year2018 Sample n`)) %>% st_as_sf() %>% 
-  mutate(UID = paste0(FDT_STA_ID,'2018'))
+  mutate(UID = paste0(FDT_STA_ID,'/2018'))
 x2019 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
   filter( !is.na(`Year2019 Sample n`)) %>% st_as_sf() %>% 
-  mutate(UID = paste0(FDT_STA_ID,'2019'))
+  mutate(UID = paste0(FDT_STA_ID,'/2019'))
 x2020 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
   filter( !is.na(`Year2020 Sample n`)) %>% st_as_sf() %>% 
-  mutate(UID = paste0(FDT_STA_ID,'2020'))
+  mutate(UID = paste0(FDT_STA_ID,'/2020'))
 x2021 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
   filter( !is.na(`Year2021 Sample n`)) %>% st_as_sf() %>% 
-  mutate(UID = paste0(FDT_STA_ID,'2021'))
+  mutate(UID = paste0(FDT_STA_ID,'/2021'))
 
 # save data for app
 saveRDS(windowSampleInfoFinalSummary,'data/processedData/AllStations.RDS')
@@ -335,4 +335,128 @@ CreateWebMap(maps = c("Topo","Imagery","Hydrography"), collapsed = TRUE,
 So now we have the fundamental data necessary for building an application for monitoring plan development. The application will display this map (2021 data will be pulled fresh upon app upload since we are in the middle of the sample season) and allow users to upload a list of stations in an xlsx.  That uploaded dataset can contain any number of sheets, additional data; the app will look for a specific column named StationID and will join those unique sites to WQM_Stations_Spatial (rebuilt weekly) to plot proposed monitoring network on this map to plug any upcoming data holes. The application will also update the IR2024 and IR2026 VAHU6 layers to reflect flags where VAHU6s don't have stations. Links to the GIS staff app will be provided to assist the identification of existing stations that could be added to the monitoring plan.
 
 Additional features will be added per user request.
+
+
+### Test reanalyze VAHU6 needs with uploaded dataset
+
+```{r user upload}
+# use same layers as weekly pin (where WQM_Stations_Spatial comes from)
+vahu6 <- st_read('data/GIS/VA_SUBWATERSHED_6TH_ORDER_STG.shp') # this version of vahu6 layer goes outside state boundary
+subbasinConversion <- read_csv('data/subbasinToVAHU6conversion.csv')
+unrestrictedAssessmentRegionVAHU6Subbasin <- left_join(vahu6, subbasinConversion, by = c('VAHU6', 'VAHU5'))
+
+
+# make sure uploaded dataset has correct sheet names
+if('Sample Plan' %in% excel_sheets('uploadData/Draft  MonPlan 2021-2022EVJ.xlsx')){
+  userUpload <- read_excel('uploadData/Draft  MonPlan 2021-2022EVJ.xlsx', sheet = 'Sample Plan') }
+stationRaw <- dplyr::select(userUpload, StationID, lat = Latitude, lng = Longitude) %>% # make new lat/lng fields in case user info here
+  filter(!is.na(StationID)) %>%  # drop extra excel rows 
+  left_join(WQM_Stations_Spatial, by = 'StationID')
+if(nrow(filter(stationRaw, is.na(Latitude) | is.na(Longitude))) > 0 ){
+  # Get spatial info for new stations
+  fix <- filter(stationRaw, is.na(Latitude) | is.na(Longitude)) %>% 
+    st_as_sf(coords = c("lng", "lat"),  # make spatial layer using these columns
+           remove = F, # don't remove these lat/lon cols from df
+           crs = 4326) %>% 
+    st_intersection(dplyr::select(unrestrictedAssessmentRegionVAHU6Subbasin, ASSESS_REG, VAHU6)) %>% 
+    mutate(ASSESS_REG = ASSESS_REG.1,
+           VAHU6 = VAHU6.1,
+           Latitude = lat,
+           Longitude = lng) %>% 
+    dplyr::select(-c(ASSESS_REG.1, VAHU6.1, lat,lng))
+  stationPlan <- bind_rows(
+    filter(stationRaw, !StationID %in% fix$StationID),
+    fix %>% st_drop_geometry()) 
+} else {
+  stationPlan <- stationRaw
+}
+
+# add proposed sampling frequency to window info
+windowInfoNew <- fakeDataFunction(stationPlan, userUpload, windowInfo)
+
+# reanalyze monitoring network by vahu6
+newMonitoring <- vahu6Layout(conventionals, windowInfoNew, WQM_Stations_Spatial) %>% ungroup() %>% st_as_sf()
+
+```
+
+
+
+
+Functions to make it all happen. These need to be updated as IR2020 drops off and IR2026+ needed for planning. 
+
+```{r create fake data}
+# function to create fake data based on user input
+fakeDataFunction <- function(stationPlan, userUpload, windowInfo){
+  zz <- left_join(dplyr::select(stationPlan, StationID),  
+                dplyr::select(userUpload, `Monitoring Year`, StationID, `Station Type`,`Annual Frequency`), 
+                by = 'StationID')
+  dataOut <- windowInfo
+  for(i in 1:nrow(zz)){
+    dataOut <- bind_rows(dataOut,
+                         tibble(Fdt_Sta_Id = zz[i,]$StationID, Fdt_Date_Time = as.Date(paste0(zz[i,]$`Monitoring Year`, '-01-01 12:01:01')),
+                                Fdt_Spg_Code = zz[i,]$`Station Type`, fakeData = 1:zz[i,]$`Annual Frequency`))  }
+  return(dataOut)
+}
+
+```
+
+```{r function to reanalyze data}
+vahu6Layout <- function(conventionals, # most recent conventionals dataset
+                        windowInfo, # extra data needed not covered in conventionals dataset
+                        WQM_Stations_Spatial,
+                        stationPlan ){
+  windowSampleInfo <- conventionals %>% 
+    dplyr::select(FDT_STA_ID, FDT_SPG_CODE, FDT_DATE_TIME ) %>% 
+  bind_rows(
+    dplyr::select(windowInfo, FDT_STA_ID = Fdt_Sta_Id, FDT_SPG_CODE = Fdt_Spg_Code, FDT_DATE_TIME = Fdt_Date_Time)) %>% 
+  mutate(Year = year(FDT_DATE_TIME)) %>% #paste0(year(FDT_DATE_TIME)), ' Sample n') %>% 
+  group_by(FDT_STA_ID, Year) %>% 
+  summarise(`Sample n` = n(),
+            `SPG codes` = paste(unique(FDT_SPG_CODE),  collapse = ' | ')) %>% 
+  mutate(IR2022 = case_when(Year %in% c(2015:2020) ~ 'IR 2022',
+                                       TRUE ~ as.character(NA)),
+         IR2024 = case_when(Year %in% c(2017:2022) ~ 'IR 2024',
+                                       TRUE ~ as.character(NA)),
+         IR2026 = case_when(Year %in% c(2019:2024) ~ 'IR 2026',
+                                       TRUE ~ as.character(NA))) %>% 
+  group_by(FDT_STA_ID, IR2022 ) %>% 
+  mutate(`IR2022 Sample n` = case_when(IR2022 == 'IR 2022' ~ sum(`Sample n`))) %>% 
+   ungroup() %>% group_by(FDT_STA_ID, IR2024 ) %>% 
+  mutate(`IR2024 Sample n` = case_when(IR2024 == 'IR 2024' ~ sum(`Sample n`))) %>% 
+  ungroup() %>%  group_by(FDT_STA_ID, IR2026 ) %>% 
+  mutate(`IR2026 Sample n` = case_when(IR2026 == 'IR 2026' ~ sum(`Sample n`))) %>% 
+  ungroup() %>% dplyr::select(-c(IR2022, IR2024, IR2026)) 
+
+windowSampleInfoSummary <- dplyr::select(windowSampleInfo, -c(`IR2022 Sample n`, `IR2024 Sample n`, `IR2026 Sample n`)) %>% 
+  group_by(FDT_STA_ID) %>% 
+  pivot_wider(names_from = 'Year', names_prefix = "Year", values_from = c('Sample n', 'SPG codes')) 
+
+
+#old skool rename of columns
+names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))] <-
+  paste(strsplit(names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))], '_') %>% 
+         map_chr(2),
+       strsplit(names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))], '_') %>% 
+         map_chr(1), sep = ' ')
+
+WQM_Stations_Spatial_New <- bind_rows(WQM_Stations_Spatial, stationPlan) %>% distinct(StationID, .keep_all = T)
+
+# rearrange column order to make sense
+windowSampleInfoFinalSummary <- windowSampleInfoSummary %>% 
+  select(sort(tidyselect::peek_vars())) %>% 
+  left_join(dplyr::select(windowSampleInfo, FDT_STA_ID, `IR2022 Sample n`, `IR2024 Sample n`, `IR2026 Sample n`) %>% 
+              pivot_longer(cols = c(`IR2022 Sample n`, `IR2024 Sample n`, `IR2026 Sample n`), names_to = 'window', values_to = 'value') %>% 
+              group_by(FDT_STA_ID, window) %>%
+              filter(value > 0) %>% ungroup() %>% 
+              group_by(FDT_STA_ID, window) %>% 
+              mutate(n = 1:n()) %>% 
+              filter(n == 1) %>% dplyr::select(-n) %>% 
+              pivot_wider(names_from = 'window', values_from = 'value'), by = 'FDT_STA_ID') %>% 
+  left_join(dplyr::select(WQM_Stations_Spatial_New, StationID:Sta_Desc, ASSESS_REG, VAHU6), by = c('FDT_STA_ID' = 'StationID')) %>% 
+  dplyr::select( FDT_STA_ID, Sta_Desc, ASSESS_REG, VAHU6, `IR2022 Sample n`, `IR2024 Sample n`,  `IR2026 Sample n`, everything()) %>% 
+  st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+           remove = T, # don't remove these lat/lon cols from df
+           crs = 4326)
+return(windowSampleInfoFinalSummary)}
+```
 
