@@ -197,9 +197,48 @@ ir2026 <- left_join(assessmentRegionsVAHU6,
   mutate(IR2026 = as.factor(case_when(is.na(`n Stations`) ~ 'Need Station', 
                             between(`n Samples`, 1, 9) ~ '< 10 samples',
                             `n Samples` >9 ~ 'Fine')))
-View(ir2026 %>% st_drop_geometry())
+#View(ir2026 %>% st_drop_geometry())
 ```
 
+### Process stations into annual layers
+
+```{r stations to annual layers}
+# make individual layers and unique identifiers so the layerID's work
+x2015 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
+  filter( !is.na(`Year2015 Sample n`)) %>% st_as_sf() %>% 
+  mutate(UID = paste0(FDT_STA_ID,'2015'))
+x2016 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
+  filter( !is.na(`Year2016 Sample n`)) %>% st_as_sf() %>% 
+  mutate(UID = paste0(FDT_STA_ID,'2016'))
+x2017 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
+  filter( !is.na(`Year2017 Sample n`)) %>% st_as_sf() %>% 
+  mutate(UID = paste0(FDT_STA_ID,'2017'))
+x2018 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
+  filter( !is.na(`Year2018 Sample n`)) %>% st_as_sf() %>% 
+  mutate(UID = paste0(FDT_STA_ID,'2018'))
+x2019 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
+  filter( !is.na(`Year2019 Sample n`)) %>% st_as_sf() %>% 
+  mutate(UID = paste0(FDT_STA_ID,'2019'))
+x2020 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
+  filter( !is.na(`Year2020 Sample n`)) %>% st_as_sf() %>% 
+  mutate(UID = paste0(FDT_STA_ID,'2020'))
+x2021 <- windowSampleInfoFinalSummary %>% ungroup() %>% 
+  filter( !is.na(`Year2021 Sample n`)) %>% st_as_sf() %>% 
+  mutate(UID = paste0(FDT_STA_ID,'2021'))
+
+# save data for app
+saveRDS(windowSampleInfoFinalSummary,'data/processedData/AllStations.RDS')
+saveRDS(x2015, 'data/processedData/stations2015.RDS')
+saveRDS(x2016, 'data/processedData/stations2016.RDS')
+saveRDS(x2017, 'data/processedData/stations2017.RDS')
+saveRDS(x2018, 'data/processedData/stations2018.RDS')
+saveRDS(x2019, 'data/processedData/stations2019.RDS')
+saveRDS(x2020, 'data/processedData/stations2020.RDS')
+saveRDS(x2021, 'data/processedData/stations2021.RDS')
+saveRDS(ir2022, 'data/processedData/vahu62022.RDS')
+saveRDS(ir2024, 'data/processedData/vahu62024.RDS')
+saveRDS(ir2026, 'data/processedData/vahu62026.RDS')
+```
 
 
 ### Visualize summary information
@@ -238,22 +277,62 @@ CreateWebMap(maps = c("Topo","Imagery","Hydrography"), collapsed = TRUE,
               fillColor= ~pal2(ir2026$IR2026), fillOpacity = 0.5,stroke=0.1,
               group="IR2026 VAHU6's", label = ~VAHU6,
               popup = leafpop::popupTable(ir2026, zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR2026'))) %>% hideGroup("IR2026 VAHU6's") %>%
-
-  # addPolygons(data= ir2022,  color = 'black', weight = 1,
-  #             fillColor= 'red', fillOpacity = 0.5,stroke=0.1,
-  #             group="IR2022 Missing VAHU6's", label = ~VAHU6,
-  #             popup = leafpop::popupTable(ir2022, zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR2022'))) %>% 
-  # hideGroup("IR2022 Missing VAHU6's") %>%
-  # addPolygons(data= ir2024,  color = 'black', weight = 1,
-  #             fillColor= 'red', fillOpacity = 0.5,stroke=0.1,
-  #             group="IR2024 Missing VAHU6's", label = ~VAHU6,
-  #             popup = leafpop::popupTable(ir2024, zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR2024'))) %>% 
-  # hideGroup("IR2024 Missing VAHU6's") %>%
+  
+  addCircleMarkers(data = x2015, color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="2015 Stations",
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(x2015, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
+                                                                 'Year2015 Sample n', 'Year2015 SPG codes'))) %>% hideGroup('2015 Stations') %>%
+    addCircleMarkers(data = x2016, color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="2016 Stations",
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(x2015, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
+                                                                 'Year2016 Sample n', 'Year2016 SPG codes'))) %>% hideGroup('2016 Stations') %>%
+    addCircleMarkers(data = x2017, color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="2017 Stations",
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(x2015, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
+                                                                 'Year2017 Sample n', 'Year2017 SPG codes'))) %>% hideGroup('2017 Stations') %>%
+    addCircleMarkers(data = x2018, color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="2018 Stations",
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(x2015, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
+                                                                 'Year2018 Sample n', 'Year2018 SPG codes'))) %>% hideGroup('2018 Stations') %>%
+    addCircleMarkers(data = x2019, color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="2019 Stations",
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(x2015, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
+                                                                 'Year2019 Sample n', 'Year2019 SPG codes'))) %>% hideGroup('2019 Stations') %>%
+    addCircleMarkers(data = x2020, color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="2020 Stations",
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(x2015, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
+                                                                 'Year2020 Sample n', 'Year2020 SPG codes'))) %>% hideGroup('2020 Stations') %>%
+    addCircleMarkers(data = x2021, color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="2021 Stations",
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(x2015, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
+                                                                 'Year2021 Sample n', 'Year2021 SPG codes'))) %>% hideGroup('2021 Stations') %>% 
+  addCircleMarkers(data = windowSampleInfoFinalSummary %>% st_as_sf(), color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="All Stations",
+                       label = ~FDT_STA_ID, layerId = ~FDT_STA_ID,
+                       popup = leafpop::popupTable(windowSampleInfoFinalSummary, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6', 
+                                                                 'IR2022 Sample n', 'IR2024 Sample n', 'IR2026 Sample n'))) %>% hideGroup('All Stations') %>% 
+  inlmisc::AddSearchButton(group = 'All Stations', zoom = 15, textPlaceholder = "Search by StationID") %>% 
   inlmisc::AddHomeButton(raster::extent(-83.89, -74.80, 36.54, 39.98), position = "topleft") %>%
   addLayersControl(baseGroups=c("Topo","Imagery","Hydrography"),
-                   overlayGroups = c("Assessment Regions", "BRRO VAHU6's","IR2022 VAHU6's", "IR2024 VAHU6's",  "IR2026 VAHU6's"),
+                   overlayGroups = c("Assessment Regions", "BRRO VAHU6's","IR2022 VAHU6's", "IR2024 VAHU6's",  "IR2026 VAHU6's",
+                                     'All Stations', "2015 Stations","2016 Stations","2017 Stations","2018 Stations",
+                                     "2019 Stations","2020 Stations", "2021 Stations"),
                                      #"IR2022 Missing VAHU6's", "IR2024 Missing VAHU6's"),
                    options=layersControlOptions(collapsed=T),
                    position='topleft')     
 
 ```
+
+## Next steps
+
+So now we have the fundamental data necessary for building an application for monitoring plan development. The application will display this map (2021 data will be pulled fresh upon app upload since we are in the middle of the sample season) and allow users to upload a list of stations in an xlsx.  That uploaded dataset can contain any number of sheets, additional data; the app will look for a specific column named StationID and will join those unique sites to WQM_Stations_Spatial (rebuilt weekly) to plot proposed monitoring network on this map to plug any upcoming data holes. The application will also update the IR2024 and IR2026 VAHU6 layers to reflect flags where VAHU6s don't have stations. Links to the GIS staff app will be provided to assist the identification of existing stations that could be added to the monitoring plan.
+
+Additional features will be added per user request.
+
