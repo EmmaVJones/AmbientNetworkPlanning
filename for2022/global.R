@@ -96,6 +96,7 @@ fakeDataFunction <- function(stationPlan, userUpload, windowInfo){
 #windowInfoNew <- fakeDataFunction(stationPlan, userUpload, windowInfo)
 
 
+# Update every two years
 #function to reanalyze data by vahu6
 vahu6Layout <- function(conventionals, # most recent conventionals dataset
                         windowInfo, # extra data needed not covered in conventionals dataset
@@ -108,7 +109,8 @@ vahu6Layout <- function(conventionals, # most recent conventionals dataset
     mutate(Year = year(FDT_DATE_TIME)) %>% #paste0(year(FDT_DATE_TIME)), ' Sample n') %>% 
     group_by(FDT_STA_ID, Year) %>% 
     summarise(`Sample n` = n(),
-              `SPG codes` = paste(unique(FDT_SPG_CODE),  collapse = ' | ')) %>% 
+              `SPG codes` = paste(unique(FDT_SPG_CODE),  collapse = ' | '),
+              `SPG codes First` = as.factor(unique(FDT_SPG_CODE)[1])) %>% # keep this first one for mapping purposes
     mutate(IR2022 = case_when(Year %in% c(2015:2020) ~ 'IR 2022',
                               TRUE ~ as.character(NA)),
            IR2024 = case_when(Year %in% c(2017:2022) ~ 'IR 2024',
@@ -125,7 +127,7 @@ vahu6Layout <- function(conventionals, # most recent conventionals dataset
   
   windowSampleInfoSummary <- dplyr::select(windowSampleInfo, -c(`IR2022 Sample n`, `IR2024 Sample n`, `IR2026 Sample n`)) %>% 
     group_by(FDT_STA_ID) %>% 
-    pivot_wider(names_from = 'Year', names_prefix = "Year", values_from = c('Sample n', 'SPG codes')) 
+    pivot_wider(names_from = 'Year', names_prefix = "Year", values_from = c('Sample n', 'SPG codes', 'SPG codes First')) 
   
   
   #old skool rename of columns
@@ -154,4 +156,4 @@ vahu6Layout <- function(conventionals, # most recent conventionals dataset
              remove = T, # don't remove these lat/lon cols from df
              crs = 4326)
   return(windowSampleInfoFinalSummary)}
-# newMonitoring <- vahu6Layout(conventionals, windowInfoNew, WQM_Stations_Spatial) %>% ungroup() %>% st_as_sf()
+# newMonitoring <- vahu6Layout(conventionals, windowInfoNew, WQM_Stations_Spatial, stationPlan) %>% ungroup() %>% st_as_sf()
