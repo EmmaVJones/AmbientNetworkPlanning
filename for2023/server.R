@@ -15,10 +15,20 @@
 
 shinyServer(function(input, output, session) {
 
+  
+  
   # user select Region to begin
   regionData <- reactive({req(input$begin)
     readRDS(paste0('data/', input$deqRegion, 'regionInfo.RDS'))})
   
+  # empty reactive objects list, for when user uploads new data
+  reactive_objects = reactiveValues() 
+  
+  # set initial dataset
+  observe({req(regionData())
+    reactive_objects$tableData <- regionData()$windowSampleInfoFinalSummary})
+  
+
   #output$test <- renderPrint({regionData()})
   
   output$helpText1 <- renderUI({req(regionData())
@@ -130,10 +140,10 @@ shinyServer(function(input, output, session) {
                        popup = leafpop::popupTable(regionData()$x2022, zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6',
                                                                               'Year2022 Sample n', 'Year2022 SPG codes'))) %>% hideGroup('2022 Stations') %>%
       
-      addCircleMarkers(data = st_as_sf(regionData()$windowSampleInfoFinalSummary), color='blue', fillColor='gray', radius = 4,
+      addCircleMarkers(data = st_as_sf( reactive_objects$tableData ), color='blue', fillColor='gray', radius = 4,
                        fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="All Stations",
                        label = ~FDT_STA_ID, layerId = ~FDT_STA_ID,
-                       popup = leafpop::popupTable(regionData()$windowSampleInfoFinalSummary, 
+                       popup = leafpop::popupTable(  reactive_objects$tableData , 
                                                    zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6',
                                                           'IR2022 Sample n', 'IR2024 Sample n', 'IR2026 Sample n',
                                                           'IR2028 Sample n'))) %>% hideGroup('All Stations') %>%
@@ -159,7 +169,8 @@ shinyServer(function(input, output, session) {
       return()
     if(str_detect(clickName, '/')){
       clickName <- gsub("/.*", "", clickName)    }
-    return(filter(regionData()$windowSampleInfoFinalSummary, FDT_STA_ID %in% clickName)%>% 
+    # use the updateable version here
+    return(filter( reactive_objects$tableData , FDT_STA_ID %in% clickName)%>% 
              dplyr::select(-geometry) %>% 
              dplyr::select(-contains('SPG codes First'))) })
   
@@ -168,6 +179,157 @@ shinyServer(function(input, output, session) {
   output$stationDetails <- DT::renderDataTable({
     DT::datatable(tableInfo(), rownames = F,
                   options = list(dom = 't', scrollX = TRUE, pageLength = 1), selection = 'none') })
+  
+  
+  
+  
+  
+  ## User uploads data----------------------------------------------------------------------------------------------------------------------
+  
+  # uploaded data
+  userUpload <- reactive({req(input$userUploadNetwork)
+    inFile <- input$userUploadNetwork
+    if('Sample Plan' %in% excel_sheets(inFile$datapath)){
+      return(read_excel(inFile$datapath, sheet = 'Sample Plan') )
+    } else { showNotification("Uploaded Dataset Does Not Contain a Sheet Named 'Sample Plan'", duration = 10)} })
+  
+  # Process Uploaded Data
+  stationPlan <- reactive({req(input$userUploadNetwork, nrow(userUpload()) > 0)
+    stationRaw <- dplyr::select(userUpload(), StationID, lat = Latitude, lng = Longitude) %>% # make new lat/lng fields in case user info here
+      filter(!is.na(StationID)) %>%  # drop extra excel rows 
+      left_join(WQM_Stations_Spatial, by = 'StationID')
+    if(nrow(filter(stationRaw, is.na(Latitude) | is.na(Longitude))) > 0 ){
+      # Get spatial info for new stations
+      fix <- filter(stationRaw, is.na(Latitude) | is.na(Longitude)) %>% 
+        st_as_sf(coords = c("lng", "lat"),  # make spatial layer using these columns
+                 remove = F, # don't remove these lat/lon cols from df
+                 crs = 4326) %>% 
+        st_intersection(dplyr::select(unrestrictedAssessmentRegionVAHU6Subbasin, ASSESS_REG, VAHU6)) %>% 
+        mutate(ASSESS_REG = ASSESS_REG.1,
+               VAHU6 = VAHU6.1,
+               Latitude = lat,
+               Longitude = lng) %>% 
+        dplyr::select(-c(ASSESS_REG.1, VAHU6.1, lat,lng))
+      stationPlan <- bind_rows(
+        filter(stationRaw, !StationID %in% fix$StationID),
+        fix %>% st_drop_geometry()) 
+    } else {
+      stationPlan <- stationRaw
+    }
+    return(stationPlan)  })
+  
+  # Reanalyze new monitoring network by VAHU6
+  newMonitoring <- reactive({req(nrow(stationPlan()) > 0, regionData()$windowInfo)
+    # add proposed sampling frequency to window info
+    windowInfoNew <- fakeDataFunction(stationPlan(), userUpload(), regionData()$windowInfo)
+    
+    # reanalyze monitoring network by vahu6
+    return(vahu6Layout(conventionals, windowInfoNew, WQM_Stations_Spatial, stationPlan()) %>% ungroup())    })
+  
+  
+  # Update data available in review table
+  observe({req(nrow(stationPlan()) > 0, regionData()$windowInfo, nrow(newMonitoring()) > 0)
+    reactive_objects$tableData <- newMonitoring()  })
+  
+  #output$test <- renderPrint({ newIR2026() })
+  
+  # Update every two years
+  newIR2026 <- reactive({req(nrow(newMonitoring()))
+    return(left_join(st_as_sf(regionData()$ir2022) %>% 
+                       dplyr::select(VAHU6, ASSESS_REG), 
+                     newMonitoring() %>% 
+                       filter(!is.na(`IR2026 Sample n`)) %>% 
+                       group_by(VAHU6) %>% 
+                       summarise(`n Stations` = length(unique(FDT_STA_ID))) %>% 
+                       left_join(
+                         newMonitoring() %>% 
+                           group_by(VAHU6) %>% 
+                           summarise(`n Samples` = sum(`IR2026 Sample n`, na.rm = T)) , by = 'VAHU6'  ),
+                     by = 'VAHU6') %>% 
+             mutate(`IR Sampling Status` = as.factor(case_when(is.na(`n Stations`) ~ 'Need Station', 
+                                                 between(`n Samples`, 1, 9) ~ '< 10 samples',
+                                                 `n Samples` >9 ~ 'Fine')))) %>% 
+      st_as_sf()   })
+  
+  # Update every two years
+  newIR2028 <- reactive({req(nrow(newMonitoring()))
+    return(left_join(st_as_sf(regionData()$ir2022) %>% 
+                       dplyr::select(VAHU6, ASSESS_REG), 
+                     newMonitoring() %>% 
+                       filter(!is.na(`IR2028 Sample n`)) %>% 
+                       group_by(VAHU6) %>% 
+                       summarise(`n Stations` = length(unique(FDT_STA_ID))) %>% 
+                       left_join(
+                         newMonitoring() %>% 
+                           group_by(VAHU6) %>% 
+                           summarise(`n Samples` = sum(`IR2028 Sample n`, na.rm = T)) , by = 'VAHU6'  ),
+                     by = 'VAHU6') %>% 
+             mutate(`IR Sampling Status` = as.factor(case_when(is.na(`n Stations`) ~ 'Need Station', 
+                                                 between(`n Samples`, 1, 9) ~ '< 10 samples',
+                                                 `n Samples` >9 ~ 'Fine')))) %>% 
+      st_as_sf()   })
+  
+  newYear <- reactive({req(nrow(newMonitoring()) > 0)
+    filter_at(newMonitoring(), c(length(newMonitoring())-2), all_vars(!is.na(.))) %>% # grab second to last column, which should be the new year sample counts
+      st_as_sf() %>% 
+      mutate(UID = paste0(FDT_STA_ID,' ', unique(userUpload()$`Monitoring Year`)))}) 
+  
+  # Update map data
+  observe({req(nrow(newMonitoring()) > 0)
+    pal2 <- colorFactor(
+      palette = c('yellow', 'green','red'),
+      domain = levels(regionData()$ir2022$`IR Sampling Status`))
+    
+    stationPal <- colorFactor(palette = rainbow(11),
+                              domain = unique(regionData()$windowSampleInfoFinalSummary %>% 
+                                                dplyr::select(contains('SPG codes First')) %>% 
+                                                pivot_longer(cols = contains('SPG codes First'), names_to = 'year', values_to = 'SPG') %>% 
+                                                filter(!is.na(SPG)) %>% 
+                                                distinct(SPG) %>% 
+                                                pull(SPG)))
+    
+    regionalMap_proxy %>%
+      clearGroup('All Stations') %>% clearGroup("IR2026 VAHU6s") %>% clearGroup("IR2028 VAHU6s") %>% 
+      addCircleMarkers(data = newMonitoring() %>% st_as_sf(), color='blue', fillColor='gray', radius = 4,
+                       fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="All Stations",
+                       label = ~FDT_STA_ID, layerId = ~paste(FDT_STA_ID, '/new'),
+                       popup = leafpop::popupTable(newMonitoring(), zcol=c('FDT_STA_ID', 'Sta_Desc', 'VAHU6',
+                                                                           'IR2022 Sample n', 'IR2024 Sample n', 'IR2026 Sample n',
+                                                                           'IR2028 Sample n'))) %>% hideGroup('All Stations') %>% 
+      addCircleMarkers(data = newYear(),
+                       color='black', fillColor=~stationPal(`Year2022 SPG codes First`), # Update every two years 
+                       radius = 4, fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="Proposed Monitoring Network",
+                       label = ~FDT_STA_ID, layerId = ~UID,
+                       popup = leafpop::popupTable(newYear(), zcol=c('FDT_STA_ID','Sta_Desc', 'VAHU6', 
+                                                                     'Year2023 Sample n', 'Year2023 SPG codes'))) %>% # Update every two years
+      addPolygons(data= newIR2026(),  color = 'black', weight = 1,
+                  fillColor= ~pal2(newIR2026()$`IR Sampling Status`), fillOpacity = 0.5,stroke=0.1,
+                  group="IR2026 VAHU6s", label = ~VAHU6,
+                  popup = leafpop::popupTable(newIR2026(), zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR Sampling Status'))) %>% hideGroup("IR2026 VAHU6s") %>%
+      addPolygons(data= newIR2028(),  color = 'black', weight = 1,
+                  fillColor= ~pal2(newIR2028()$`IR Sampling Status`),  fillOpacity = 0.5,stroke=0.1,
+                  group="IR2028 VAHU6s", label = ~VAHU6,
+                  popup = leafpop::popupTable(newIR2028(), zcol=c('VAHU6', 'n Stations', 'n Samples', 'IR Sampling Status'))) %>% hideGroup("IR2028 VAHU6s") %>%
+      
+      # Update every two years
+      addLayersControl(baseGroups=c("Topo","Imagery","Hydrography"),
+                       overlayGroups = c("Assessment Regions", "Selected Region's VAHU6s",
+                                         "IR2022 VAHU6s", "IR2024 VAHU6s",  "IR2026 VAHU6s", "IR2028 VAHU6s",
+                                         'All Stations', "2015 Stations","2016 Stations","2017 Stations","2018 Stations",
+                                         "2019 Stations","2020 Stations", "2021 Stations", "2022 Stations", 
+                                         "Proposed Monitoring Network"),
+                       options=layersControlOptions(collapsed=T),
+                       position='topleft') })
+  
+  
+  
+  
+  ## Tab Uploaded Data
+  output$uploadedDataset <- DT::renderDataTable({req(userUpload())
+    DT::datatable(userUpload(), rownames = F,
+                  ist(dom = 'Bit', scrollX = TRUE, scrollY = '350px',
+                      pageLength = nrow(userUpload()), buttons=list('copy')), selection = 'none')})
+  
   
   
 })

@@ -163,7 +163,7 @@ vahu6Layout <- function(conventionals, # most recent conventionals dataset
                 mutate(n = 1:n()) %>% 
                 filter(n == 1) %>% dplyr::select(-n) %>% 
                 pivot_wider(names_from = 'window', values_from = 'value'), by = 'FDT_STA_ID') %>% 
-    left_join(dplyr::select(WQM_Stations_Spatial, StationID:Sta_Desc, ASSESS_REG, VAHU6), by = c('FDT_STA_ID' = 'StationID')) %>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_New, StationID:Sta_Desc, ASSESS_REG, VAHU6), by = c('FDT_STA_ID' = 'StationID')) %>% 
     dplyr::select( FDT_STA_ID, Sta_Desc, ASSESS_REG, VAHU6, `IR2022 Sample n`, `IR2024 Sample n`, 
                    `IR2026 Sample n`,  `IR2028 Sample n`, everything()) %>% 
     st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns

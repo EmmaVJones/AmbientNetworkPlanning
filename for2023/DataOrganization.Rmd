@@ -172,6 +172,7 @@ assessmentRegionsVAHU6 <- st_read( 'data/GIS/AssessmentRegions_VA84_basins.shp')
 
 regionInfo <- list(
   sampleWindow = sampleWindow,
+  windowInfo = windowInfo,
   conventionals = conventionals,
   windowSampleInfoFinalSummary = windowSampleInfoFinalSummary %>%  
     left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
