@@ -1,0 +1,289 @@
+---
+title: "2023 Monitoring Plan"
+author: "Emma Jones"
+date: "6/14/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# built in R 3.6.2
+library(tidyverse)
+library(sf)
+library(config)
+library(DBI)
+library(pool)
+library(dbplyr)
+library(leaflet)
+library(inlmisc)
+library(DT)
+library(lubridate)
+library(readxl)
+library(pins)
+
+# Get configuration settings
+conn <- config::get("connectionSettings")
+
+board_register_rsconnect(key = conn$CONNECT_API_KEY,  #Sys.getenv("CONNECT_API_KEY"),
+                         server = conn$CONNECT_SERVER)#Sys.getenv("CONNECT_SERVER"))
+
+## Connect to ODS production
+pool <- dbPool(
+  drv = odbc::odbc(),
+  Driver = "ODBC Driver 11 for SQL Server",#Driver = "SQL Server Native Client 11.0",
+  Server= "DEQ-SQLODS-PROD,50000",
+  dbname = "ODS",
+  trusted_connection = "yes"
+)
+```
+
+## Project Background
+
+BRRO's monitoring planning process is being updated to a more reproducible and efficient collaborative process that utilizes modern project sharing techniques. This report serves as one project archive to aid in future monitoring plan development.
+
+The general steps of a monitoring plan development involve identifying where previous plans have sampled and what frequency, comparing that information with longer term sampling goals, and identifying stations to be monitored in the upcoming year. After the plan is mapped out for the forthcoming season, new stations are created (as needed) in CEDS, monitoring staff build runs to efficiently collect samples and program these runs in CEDS. After a region is done with their monitoring plan, Central Office staff review the plan to ensure statewide goals and budget are met, providing feedback for the region if needed.
+
+### Data Gathering
+
+First, we will bring in the 2022 IR dataset to get a longer term view of sampling efforts in BRRO. This dataset encompasses 2015-2020. The station project codes and sample frequency are useful to the planning process to ensure sampling goals have been met. 
+
+After this data is summarized, we will pull the 2021-2022 sample information (to date) from CEDS to run through a similar process. 
+
+By mapping this information we can quickly identify areas that might be lacking data for upcoming assessment windows and correct for potential data gaps.
+
+```{r region Choice}
+region <- "BRRO"
+```
+
+Pro tip: you can adjust the region above and use the Run all option in the Run drop down above to efficiently rebuild this dataset for all regions statewide (it's not a loop, but kinda).
+
+```{r bring in precompiled spatial data}
+WQM_Stations_Spatial <- pin_get("ejones/WQM-Stations-Spatial", board = "rsconnect") %>%
+  rename("Basin_Name" = "Basin_Code")   # can't have same name different case when using sqldf
+WQM_Stations_Spatial_Region <-  filter(WQM_Stations_Spatial, ASSESS_REG == region)
+```
+
+
+```{r conventionals IR2022}
+# # Takes a while so only do this once and save BRRO subset locally
+# conventionals <- read_excel('C:/HardDriveBackup/R/GitHub/IR2022/2.organizeMetadata/data/final2022data/CEDSWQM/CONVENTIONALS_20210504.xlsx') %>%
+#   # get it in real conventionals format
+#   rename('Deq_Region'='VADEQ_ADMIN_REGION', 'STA_REC_CODE' = 'MONITORING_REGION',
+#          'ECOLI' = 'E.COLI_ECOLI_CFU/100mL', 'ENTEROCOCCI' = 'ENTEROCOCCI_31649_NO/100mL')  %>%
+#   left_join(WQM_Stations_Spatial, by = c("FDT_STA_ID" = 'StationID')) 
+# 
+# # repeat for each region 
+# conventionalsRegion <- conventionals %>% 
+#   filter(ASSESS_REG == region)
+# saveRDS(conventionalsRegion, paste0('../for2022/data/IR2022conventionals', region, '.RDS'))
+# rm(conventionalsRegion)
+conventionals <- readRDS(paste0('../for2022/data/IR2022conventionals', region, '.RDS')  )
+
+```
+
+
+Now pull sample info for 2021-Sys.Date sample data from CEDS. Certain Survey Program codes are dropped bc they don't directly relate to WQM activities. These are excluded from any field data pulled from ODS. More codes could be included in this list with more input from regions.
+
+```{r 2021 sample data from CEDS}
+sampleWindow <- c(as.Date('2021-01-01'), as.Date(Sys.Date()))
+windowInfo <- pool %>% tbl( in_schema("wqm", "Wqm_Field_Data_View")) %>%
+  filter(Fdt_Sta_Id %in% !! WQM_Stations_Spatial_Region$StationID &
+           between(as.Date(Fdt_Date_Time), !! sampleWindow[1], !! sampleWindow[2])) %>%
+  filter(! Fdt_Spg_Code %in% c("GW", "FM", "HW", "NT", "PO", "IR", "AM", "FI", "QA", "PC")) %>%  #drop codes not used for WQM
+  as_tibble() 
+
+```
+
+
+Now we can combine these datasets and summarize sample information
+
+```{r combine data and summarize}
+
+windowSampleInfo <- conventionals %>% 
+  dplyr::select(FDT_STA_ID, FDT_SPG_CODE, FDT_DATE_TIME ) %>% 
+  bind_rows(
+    dplyr::select(windowInfo, FDT_STA_ID = Fdt_Sta_Id, FDT_SPG_CODE = Fdt_Spg_Code, FDT_DATE_TIME = Fdt_Date_Time)) %>% 
+  mutate(Year = year(FDT_DATE_TIME)) %>% #paste0(year(FDT_DATE_TIME)), ' Sample n') %>% 
+  group_by(FDT_STA_ID, Year) %>% 
+  summarise(`Sample n` = n(),
+            `SPG codes` = paste(unique(FDT_SPG_CODE),  collapse = ' | '),
+            `SPG codes First` = as.factor(unique(FDT_SPG_CODE)[1])) %>% # keep this first one for mapping purposes
+  mutate(IR2022 = case_when(Year %in% c(2015:2020) ~ 'IR 2022',
+                                       TRUE ~ as.character(NA)),
+         IR2024 = case_when(Year %in% c(2017:2022) ~ 'IR 2024',
+                                       TRUE ~ as.character(NA)),
+         IR2026 = case_when(Year %in% c(2019:2024) ~ 'IR 2026',
+                                       TRUE ~ as.character(NA)),
+         IR2028 = case_when(Year %in% c(2021:2026) ~ 'IR 2028',
+                                       TRUE ~ as.character(NA))) %>% 
+  group_by(FDT_STA_ID, IR2022 ) %>% 
+  mutate(`IR2022 Sample n` = case_when(IR2022 == 'IR 2022' ~ sum(`Sample n`))) %>% 
+   ungroup() %>% group_by(FDT_STA_ID, IR2024 ) %>% 
+  mutate(`IR2024 Sample n` = case_when(IR2024 == 'IR 2024' ~ sum(`Sample n`))) %>% 
+  ungroup() %>%  group_by(FDT_STA_ID, IR2026 ) %>% 
+  mutate(`IR2026 Sample n` = case_when(IR2026 == 'IR 2026' ~ sum(`Sample n`))) %>% 
+  ungroup() %>%  group_by(FDT_STA_ID, IR2028 ) %>% 
+   mutate(`IR2028 Sample n` = case_when(IR2028 == 'IR 2028' ~ sum(`Sample n`))) %>% 
+  ungroup() %>% 
+  dplyr::select(-c(IR2022, IR2024, IR2026, IR2028)) 
+
+windowSampleInfoSummary <- dplyr::select(windowSampleInfo, -c(`IR2022 Sample n`, `IR2024 Sample n`, `IR2026 Sample n`,
+                                                               `IR2028 Sample n`)) %>% 
+  group_by(FDT_STA_ID) %>% 
+  pivot_wider(names_from = 'Year', names_prefix = "Year", values_from = c('Sample n', 'SPG codes', 'SPG codes First')) 
+
+
+#old skool rename of columns
+names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))] <-
+  paste(strsplit(names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))], '_') %>% 
+         map_chr(2),
+       strsplit(names(windowSampleInfoSummary)[2:length(names(windowSampleInfoSummary))], '_') %>% 
+         map_chr(1), sep = ' ')
+
+# rearrange column order to make sense
+windowSampleInfoFinalSummary <- windowSampleInfoSummary %>% 
+  select(sort(tidyselect::peek_vars())) %>% 
+  left_join(dplyr::select(windowSampleInfo, FDT_STA_ID, `IR2022 Sample n`, `IR2024 Sample n`, 
+                          `IR2026 Sample n`, `IR2028 Sample n`) %>% 
+              pivot_longer(cols = c(`IR2022 Sample n`, `IR2024 Sample n`, 
+                                    `IR2026 Sample n`, `IR2028 Sample n`), names_to = 'window', values_to = 'value') %>% 
+              group_by(FDT_STA_ID, window) %>%
+              filter(value > 0) %>% ungroup() %>% 
+              group_by(FDT_STA_ID, window) %>% 
+              mutate(n = 1:n()) %>% 
+              filter(n == 1) %>% dplyr::select(-n) %>% 
+              pivot_wider(names_from = 'window', values_from = 'value'), by = 'FDT_STA_ID') %>% 
+  left_join(dplyr::select(WQM_Stations_Spatial, StationID:Sta_Desc, ASSESS_REG, VAHU6), by = c('FDT_STA_ID' = 'StationID')) %>% 
+  dplyr::select( FDT_STA_ID, Sta_Desc, ASSESS_REG, VAHU6, `IR2022 Sample n`, `IR2024 Sample n`, 
+                 `IR2026 Sample n`,  `IR2028 Sample n`, everything()) %>% 
+  st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+           remove = T, # don't remove these lat/lon cols from df
+           crs = 4326)
+```
+
+Save as list object for use in app.
+
+```{r}
+# necessary spatial info
+assessmentRegionsVAHU6 <- st_read( 'data/GIS/AssessmentRegions_VA84_basins.shp') %>%
+  filter(ASSESS_REG == region) %>%
+  dplyr::select(VAHU6, ASSESS_REG)
+
+regionInfo <- list(
+  sampleWindow = sampleWindow,
+  conventionals = conventionals,
+  windowSampleInfoFinalSummary = windowSampleInfoFinalSummary %>%  
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                                  remove = T, # don't remove these lat/lon cols from df
+                                  crs = 4326),
+  x2015 = filter( windowSampleInfoFinalSummary, !is.na(`Year2015 Sample n`)) %>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    mutate(UID = paste(FDT_STA_ID, 2015, sep = '/')) %>% # UID for mapping
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                 remove = T, # don't remove these lat/lon cols from df
+                 crs = 4326) ,
+  x2016 = filter( windowSampleInfoFinalSummary, !is.na(`Year2016 Sample n`))%>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    mutate(UID = paste(FDT_STA_ID, 2016, sep = '/')) %>% # UID for mapping
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                 remove = T, # don't remove these lat/lon cols from df
+                 crs = 4326) ,
+  x2017 = filter( windowSampleInfoFinalSummary, !is.na(`Year2017 Sample n`)) %>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    mutate(UID = paste(FDT_STA_ID, 2017, sep = '/')) %>% # UID for mapping
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                 remove = T, # don't remove these lat/lon cols from df
+                 crs = 4326) ,
+  x2018 = filter( windowSampleInfoFinalSummary, !is.na(`Year2018 Sample n`)) %>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    mutate(UID = paste(FDT_STA_ID, 2018, sep = '/')) %>% # UID for mapping
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                 remove = T, # don't remove these lat/lon cols from df
+                 crs = 4326) ,
+  x2019 = filter( windowSampleInfoFinalSummary, !is.na(`Year2019 Sample n`)) %>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    mutate(UID = paste(FDT_STA_ID, 2019, sep = '/')) %>% # UID for mapping
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                 remove = T, # don't remove these lat/lon cols from df
+                 crs = 4326) ,
+  x2020 = filter( windowSampleInfoFinalSummary, !is.na(`Year2020 Sample n`))%>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    mutate(UID = paste(FDT_STA_ID, 2020, sep = '/')) %>% # UID for mapping
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                 remove = T, # don't remove these lat/lon cols from df
+                 crs = 4326) ,
+  x2021 = filter( windowSampleInfoFinalSummary, !is.na(`Year2021 Sample n`)) %>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    mutate(UID = paste(FDT_STA_ID, 2021, sep = '/')) %>% # UID for mapping
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                 remove = T, # don't remove these lat/lon cols from df
+                 crs = 4326) ,
+  x2022 = filter( windowSampleInfoFinalSummary, !is.na(`Year2022 Sample n`)) %>% 
+    left_join(dplyr::select(WQM_Stations_Spatial_Region, StationID, Latitude, Longitude),
+              by = c('FDT_STA_ID' = 'StationID')) %>% 
+    mutate(UID = paste(FDT_STA_ID, 2022, sep = '/')) %>% # UID for mapping
+    st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+                 remove = T, # don't remove these lat/lon cols from df
+                 crs = 4326) ,
+  ir2022 = filter( windowSampleInfoFinalSummary, !is.na(`IR2022 Sample n`)) %>% 
+  group_by(VAHU6) %>% 
+  summarise(`n Stations` = length(unique(FDT_STA_ID)),
+          `n Samples` = sum(`IR2022 Sample n`)) %>% 
+  # join spatial info next to make sure the tagging gets done properly in next step
+  full_join(assessmentRegionsVAHU6) %>% 
+  mutate(`IR Sampling Status` = case_when(`n Samples` >= 10 ~ 'Fine',
+                                          `n Samples` < 10 ~ '< 10 samples',
+                                          is.na(`n Stations`) | `n Samples` == 0 ~ "Need Station",
+                                          TRUE ~ as.character(NA))) %>% 
+    droplevels(),
+  ir2024 = filter( windowSampleInfoFinalSummary, !is.na(`IR2024 Sample n`)) %>% 
+  group_by(VAHU6) %>% 
+  summarise(`n Stations` = length(unique(FDT_STA_ID)),
+          `n Samples` = sum(`IR2024 Sample n`)) %>% 
+  # join spatial info next to make sure the tagging gets done properly in next step
+  full_join(assessmentRegionsVAHU6) %>% 
+  mutate(`IR Sampling Status` = case_when(`n Samples` >= 10 ~ 'Fine',
+                                          `n Samples` < 10 ~ '< 10 samples',
+                                          is.na(`n Stations`) | `n Samples` == 0 ~ "Need Station",
+                                          TRUE ~ as.character(NA))) %>% 
+    droplevels(),
+  ir2026 = filter( windowSampleInfoFinalSummary, !is.na(`IR2026 Sample n`)) %>% 
+  group_by(VAHU6) %>% 
+  summarise(`n Stations` = length(unique(FDT_STA_ID)),
+          `n Samples` = sum(`IR2026 Sample n`)) %>% 
+  # join spatial info next to make sure the tagging gets done properly in next step
+  full_join(assessmentRegionsVAHU6) %>% 
+  mutate(`IR Sampling Status` = case_when(`n Samples` >= 10 ~ 'Fine',
+                                          `n Samples` < 10 ~ '< 10 samples',
+                                          is.na(`n Stations`) | `n Samples` == 0 ~ "Need Station",
+                                          TRUE ~ as.character(NA))) %>% 
+    droplevels(),
+  ir2028 = filter( windowSampleInfoFinalSummary, !is.na(`IR2028 Sample n`)) %>% 
+  group_by(VAHU6) %>% 
+  summarise(`n Stations` = length(unique(FDT_STA_ID)),
+          `n Samples` = sum(`IR2028 Sample n`)) %>% 
+  # join spatial info next to make sure the tagging gets done properly in next step
+  full_join(assessmentRegionsVAHU6) %>% 
+  mutate(`IR Sampling Status` = case_when(`n Samples` >= 10 ~ 'Fine',
+                                          `n Samples` < 10 ~ '< 10 samples',
+                                          is.na(`n Stations`) | `n Samples` == 0 ~ "Need Station",
+                                          TRUE ~ as.character(NA))) %>% 
+    droplevels()
+)
+
+saveRDS(regionInfo, paste0('data/', region,'regionInfo.RDS'))
+```
+
+
+
+

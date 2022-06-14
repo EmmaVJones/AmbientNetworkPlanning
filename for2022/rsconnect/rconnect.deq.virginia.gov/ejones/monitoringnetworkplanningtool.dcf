@@ -1,0 +1,13 @@
+name: monitoringnetworkplanningtool
+title: MonitoringNetworkPlanningTool
+username: ejones
+account: ejones
+server: rconnect.deq.virginia.gov
+hostUrl: https://rconnect.deq.virginia.gov/__api__
+appId: 253
+bundleId: 2469
+url: https://rconnect.deq.virginia.gov/content/253/
+when: 1624541812.11392
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: 1.DataOrganization.Rmd|app.R

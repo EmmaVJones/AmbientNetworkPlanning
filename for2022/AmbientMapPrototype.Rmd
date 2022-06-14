@@ -1,0 +1,128 @@
+---
+title: "Ambient Map"
+author: "Emma Jones"
+date: "8/30/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+httr::set_config(httr::config(ssl_verifypeer = FALSE, ssl_verifyhost = FALSE))
+
+library(tidyverse)
+library(leaflet)
+library(leaflet.extras)
+library(inlmisc)
+library(config)
+library(sf)
+library(lubridate)
+library(pool)
+library(geojsonsf)
+library(pins)
+#library(sqldf)
+library(dbplyr)
+library(readxl)
+
+# Server connection things
+conn <- config::get("connectionSettings") # get configuration settings
+
+
+board_register_rsconnect(key = conn$CONNECT_API_KEY,  #Sys.getenv("CONNECT_API_KEY"),
+                         server = conn$CONNECT_SERVER)#Sys.getenv("CONNECT_SERVER"))
+
+## For testing: connect to ODS production
+pool <- dbPool(
+  drv = odbc::odbc(),
+  Driver = "ODBC Driver 11 for SQL Server",#"SQL Server Native Client 11.0",
+  Server= "DEQ-SQLODS-PROD,50000",
+  dbname = "ODS",
+  trusted_connection = "yes"
+)
+
+
+```
+
+This project links ambient stations/runs to sample information (parking, exact access point, directions) in a mobile friendly map to be saved on mobile device for easy access in the field.
+
+```{r get data}
+royceInfo <- read_excel('data/AmbientSitesSamplingInformation.xlsx', sheet = "Ambient") %>% 
+  rename('CEDS Latitude' = "CEDS lat/long"  , 'CEDS Longitude' = "...3" )
+stations <- pin_get('ejones/WQM-Stations-Spatial', board = 'rsconnect')
+monthly <- pool %>%  tbl(in_schema("wqm",  "Wqm_Monthly_Run_Sch_View")) %>%
+  filter(str_detect(Mrs_Run_Id, "W21")) %>% 
+  filter(Mrs_Sta_Id %in% !! filter(stations, ASSESS_REG == 'BRRO')$StationID) %>% # just BRRO
+  as_tibble() %>% 
+  group_by(Mrs_Run_Id, Mrs_Sta_Id) %>% # limit to unique stations and runs
+  summarise(n = n()) %>% 
+  dplyr::select(-n) %>% # don't actually care about this info just wanted stations by runs
+  rename('StationID' = 'Mrs_Sta_Id' ) %>% 
+  left_join(stations, by = 'StationID') %>% 
+  left_join(royceInfo, by =  'StationID') %>% 
+  mutate(Mrs_Run_Id = as.factor(Mrs_Run_Id),
+         `Directions to CEDS Coordinates` = paste('https://www.google.com/maps/dir//',Latitude,",",Longitude,'/@',Latitude,",",Longitude,",",'16z',sep=''),
+         `Directions to Parking Coordinates` = case_when(!is.na(Parking_Lat) & !is.na(Parking_Long) ~ paste('https://www.google.com/maps/dir//',Parking_Lat,",",Parking_Long,'/@',Parking_Lat,",",Parking_Long,",",'16z',sep=''),
+                                                         TRUE ~ NA_character_),
+         `Directions to Sample Coordinates` = case_when(!is.na(Sample_LAT) && !is.na(Sample_Long) ~ paste('https://www.google.com/maps/dir//',Sample_LAT,",",Sample_Long,'/@',Sample_LAT,",",Sample_Long,",",'16z',sep=''), 
+                                                        TRUE ~ NA_character_)) %>% 
+  st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+           remove = F, # don't remove these lat/lon cols from df
+           crs = 4326)
+
+   
+```
+
+Just ambient
+
+```{r ambient}
+#monthly <- filter(monthly, str_detect(Mrs_Run_Id, 'W21' ))
+
+monthly <- pin_get("ejones/WQM-Stations-Spatial") %>% 
+  filter(StationID %in% c("2-CRG074.47", "4ARNF013.66", "4AROA227.42", "9-NEW030.15", "9-NEW066.90", "9-STE002.41", "9-WFC000.20", "9-WLK004.34", "4ARSF014.02", "9-BCK015.98", "9-BSH000.05", "9-LRV009.11", "9-LRV065.57", "9-LWF004.55", "9-NEW098.32", "9-PKC007.80")) %>% 
+  left_join(royceInfo, by =  'StationID') %>% 
+  mutate(Mrs_Run_Id = as.factor(#as.factor(Mrs_Run_Id),
+           ifelse(StationID %in% c("2-CRG074.47", "4ARNF013.66", "4AROA227.42", "9-NEW030.15", "9-NEW066.90", "9-STE002.41", "9-WFC000.20", "9-WLK004.34"), 'W21A1','W21B1')),
+         `Directions to CEDS Coordinates` = paste('https://www.google.com/maps/dir//',Latitude,",",Longitude,'/@',Latitude,",",Longitude,",",'16z',sep=''),
+         `Directions to Parking Coordinates` = case_when(!is.na(Parking_Lat) & !is.na(Parking_Long) ~ paste('https://www.google.com/maps/dir//',Parking_Lat,",",Parking_Long,'/@',Parking_Lat,",",Parking_Long,",",'16z',sep=''),
+                                                         TRUE ~ NA_character_),
+         `Directions to Sample Coordinates` = case_when(!is.na(Sample_LAT) && !is.na(Sample_Long) ~ paste('https://www.google.com/maps/dir//',Sample_LAT,",",Sample_Long,'/@',Sample_LAT,",",Sample_Long,",",'16z',sep=''), 
+                                                        TRUE ~ NA_character_)) %>% 
+  st_as_sf(coords = c("Longitude", "Latitude"),  # make spatial layer using these columns
+           remove = F, # don't remove these lat/lon cols from df
+           crs = 4326)
+
+```
+
+
+```{r map}
+# color palette for assessment polygons
+pal <- colorFactor(
+  palette = topo.colors(7),
+  domain = droplevels(unique(monthly$Mrs_Run_Id)))
+
+CreateWebMap(maps = c("Topo","Imagery","Hydrography"), collapsed = TRUE,
+             options= leafletOptions(zoomControl = TRUE,minZoom = 3, maxZoom = 20,
+                                     preferCanvas = TRUE)) %>%
+  setView(-79.1, 37.7, zoom=7)  %>%
+  addCircleMarkers(data = monthly,
+                   color='black', fillColor=~pal(Mrs_Run_Id), radius = 4,
+                   fillOpacity = 0.5,opacity=0.8,weight = 2,stroke=T, group="Stations",
+                   label = ~StationID, layerId = ~StationID,
+                   popup = paste(sep='<br/>',paste("Run ID:",monthly$Mrs_Run_Id),
+                                paste("StationID:",monthly$StationID),
+                                paste('Description:',monthly$Sta_Desc),
+                                paste('<a href = ',monthly$`Directions to CEDS Coordinates`,'target="blank" > Directions to CEDS Coordinates </a>'),
+                                paste('<a href = ',monthly$`Directions to Parking Coordinates`,'target="blank" > Directions to Parking Coordinates </a>'),
+                                paste('<a href = ',monthly$`Directions to Sample Coordinates`,'target="blank" > Directions to Sample Coordinates </a>'),
+                                paste('Sample Comments:', monthly$`Comments/concerns`))) %>% 
+  addLegend(data = monthly,'topright', pal = pal, values = ~`Mrs_Run_Id`, title = 'Run ID') %>% 
+  inlmisc::AddSearchButton(group = 'Stations', zoom = 13, textPlaceholder = 'Search for StationID here') %>% 
+  inlmisc::AddHomeButton(raster::extent(-83.89, -74.80, 36.54, 39.98), position = "topleft") %>%
+  addLayersControl(baseGroups=c("Topo","Imagery","Hydrography"),
+                   overlayGroups = c("Stations"),
+                   options=layersControlOptions(collapsed=T),
+                   position='topleft')
+
+
+```
+

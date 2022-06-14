@@ -4,6 +4,11 @@
 .Ruserdata
 
 
+for2018/data/
+for2018/www/
+
+for2019/data/
+for2019/www/
 
 for2020/data/CEDSWQM_CONVENTIONALS_2018+.xlsx
 for2020/data/BRROdata2013toNov2019.RDS
@@ -15,3 +20,7 @@ for2022/config.yml
 
 
 *.yml
+for2023/data/
+for2023/config.yml
+for2023/www/
+for2023/uploadData/
