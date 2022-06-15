@@ -1,0 +1,13 @@
+name: wqm_sampling_network_planning_tool
+title: WQM Sampling Network Planning Tool
+username: ejones
+account: ejones
+server: rconnect.deq.virginia.gov
+hostUrl: https://rconnect.deq.virginia.gov/__api__
+appId: 329
+bundleId: 6840
+url: https://rconnect.deq.virginia.gov/content/329/
+when: 1655312708.33916
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: appTesting.R|DataOrganization.Rmd|uploadData/Draft MonPlan 2021-2022EVJ.xlsx|uploadData/Draft MonPlan 2023-2024EVJ.xlsx

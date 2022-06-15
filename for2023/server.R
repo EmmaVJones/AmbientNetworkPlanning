@@ -1,11 +1,11 @@
-# source('global.R')
-# 
-# assessmentRegions <- st_read( 'data/GIS/AssessmentRegions_simple.shp')
-# ## use same layers as weekly pin (where WQM_Stations_Spatial comes from)
-# vahu6 <- st_read('data/GIS/VA_SUBWATERSHED_6TH_ORDER_STG.shp') # this version of vahu6 layer goes outside state boundary
-# subbasinConversion <- read_csv('data/subbasinToVAHU6conversion.csv')
-# unrestrictedAssessmentRegionVAHU6Subbasin <- left_join(vahu6, subbasinConversion, by = c('VAHU6', 'VAHU5'))
-# 
+source('global.R')
+
+assessmentRegions <- st_read( 'data/GIS/AssessmentRegions_simple.shp')
+## use same layers as weekly pin (where WQM_Stations_Spatial comes from)
+vahu6 <- st_read('data/GIS/VA_SUBWATERSHED_6TH_ORDER_STG.shp') # this version of vahu6 layer goes outside state boundary
+subbasinConversion <- read_csv('data/subbasinToVAHU6conversion.csv')
+unrestrictedAssessmentRegionVAHU6Subbasin <- left_join(vahu6, subbasinConversion, by = c('VAHU6', 'VAHU5'))
+
 
 
 
@@ -224,7 +224,7 @@ shinyServer(function(input, output, session) {
     windowInfoNew <- fakeDataFunction(stationPlan(), userUpload(), regionData()$windowInfo)
     
     # reanalyze monitoring network by vahu6
-    return(vahu6Layout(conventionals, windowInfoNew, WQM_Stations_Spatial, stationPlan()) %>% ungroup())    })
+    return(vahu6Layout(regionData()$conventionals, windowInfoNew, WQM_Stations_Spatial, stationPlan()) %>% ungroup())    })
   
   
   # Update data available in review table
