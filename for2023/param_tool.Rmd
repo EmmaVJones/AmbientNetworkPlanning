@@ -1,0 +1,142 @@
+---
+title: "wqm_sampling_param_tool"
+author: "kb"
+date: '2022-07-12'
+output: html_document
+---
+
+*built as part of Emma's wqm_samplingntwktool --> for 2023 Rproj
+*requires connection to data OR local files of BRRO conventionals, BRROregionInfo
+
+We want to know
+1) where do we have NO data?
+2) where do we have missing data
+
+this script
+- ignores spg code QA -- filter out at the joining of the 2 datasets
+- summarizes total visits per year, counts parameter-specific measurements
+- summarizes those counts by year/IR window and station, gives percentage of total visits by param counts!
+- creates a new df for whittling down all that info into just seeing sample counts by IR window AND param percent reporting for each window (i.e., if "IR26Temp" value for a station is 100, that means you've got temperature measurements for every sample visit, if it's 50 you're missing half and so on)
+
+```{r}
+#count_na <- function(x) sum(is.na(x))
+
+BRROregionInfo <- readRDS(paste0('data/BRROregionInfo.RDS'))
+BRROconventionals <- readRDS(paste0('../for2022/data/IR2022conventionalsBRRO.RDS')  ) %>% 
+  rename(FDT_TEMP_CELCIUS =`TEMPERATURE_00010_DEGREES CENTIGRADE` ,
+         FDT_FIELD_PH= pH_00400_STD_UNITS ,
+         DO_mg_L= `DO_mg/L`)
+
+#a big big table of sample n's and param NAs by IR window
+ParamSampleInfo <- BRROconventionals %>% 
+  dplyr::select(FDT_STA_ID, FDT_SPG_CODE, FDT_DATE_TIME, FDT_TEMP_CELCIUS, FDT_FIELD_PH, DO_mg_L) %>% 
+  bind_rows(
+    dplyr::select(BRROregionInfo$windowInfo, FDT_STA_ID = Fdt_Sta_Id, FDT_SPG_CODE = Fdt_Spg_Code, FDT_DATE_TIME = Fdt_Date_Time, FDT_TEMP_CELCIUS = Fdt_Temp_Celcius, FDT_FIELD_PH = Fdt_Field_Ph, DO_mg_L = Fdt_Do_Optical, FDT_SPECIFIC_CONDUCTANCE = Fdt_Specific_Conductance)) %>% 
+  filter(FDT_SPG_CODE != "QA") %>% 
+  mutate(Year = year(FDT_DATE_TIME)) %>%  
+ group_by(FDT_STA_ID, Year) %>% 
+  mutate(`Sample n`= n(),
+         `Temp NAs`= count_na(FDT_TEMP_CELCIUS),
+         `pH NAs` = count_na(FDT_FIELD_PH),
+         `DO NAs` = count_na(DO_mg_L),
+         `SpC NAs` = count_na(FDT_SPECIFIC_CONDUCTANCE)) %>%
+ group_by(FDT_STA_ID, Year) %>% 
+  summarise(`Sample n` = n(), #only counting unique rows of sta ID, div by year
+            `SPG codes` = paste(unique(FDT_SPG_CODE),  collapse = ' | '),
+            `SPG codes First` = as.factor(unique(FDT_SPG_CODE)[1]), # keep this first one for mapping purposes
+            `Temp NAs`= as.numeric(unique(`Temp NAs`)[1]), #just stealing the first value of the na count
+            `pH NAs` = as.numeric(unique(`pH NAs`)[1]),
+            `DO NAs` = as.numeric(unique(`DO NAs`)[1]),
+            `SpC NAs` = as.numeric(unique(`SpC NAs`)[1])) %>%
+  mutate(IR2022 = case_when(Year %in% c(2015:2020) ~ 'IR 2022',
+                                       TRUE ~ as.character(NA)),#from orig, makes identifiers for your counts
+         IR2024 = case_when(Year %in% c(2017:2022) ~ 'IR 2024',
+                                       TRUE ~ as.character(NA)),
+         IR2026 = case_when(Year %in% c(2019:2024) ~ 'IR 2026',
+                                       TRUE ~ as.character(NA)),
+         IR2028 = case_when(Year %in% c(2021:2026) ~ 'IR 2028',
+                                       TRUE ~ as.character(NA))) %>% 
+  group_by(FDT_STA_ID, IR2022 ) %>% 
+  mutate(`IR2022 Sample n` = case_when(IR2022 == 'IR 2022' ~ sum(`Sample n`))) %>% 
+     ungroup() %>% group_by(FDT_STA_ID, IR2024 ) %>% 
+  mutate(`IR2024 Sample n` = case_when(IR2024 == 'IR 2024' ~ sum(`Sample n`)), 
+         `IR2024 Temp NAs` = case_when(IR2024 == 'IR 2024' ~ sum(`Temp NAs`)), #well this is not elegant
+         `IR2024 pH NAs` = case_when(IR2024 == 'IR 2024' ~ sum(`pH NAs`)),
+         `IR2024 DO NAs` = case_when(IR2024 == 'IR 2024' ~ sum(`DO NAs`)),
+         `IR2024 SpC NAs` = case_when(IR2024 == 'IR 2024' ~ sum(`SpC NAs`))) %>% 
+      ungroup() %>%  group_by(FDT_STA_ID, IR2026 ) %>% 
+  mutate(`IR2026 Sample n` = case_when(IR2026 == 'IR 2026' ~ sum(`Sample n`)),
+         `IR2026 Temp NAs` = case_when(IR2026 == 'IR 2026' ~ sum(`Temp NAs`)),
+         `IR2026 pH NAs` = case_when(IR2026 == 'IR 2026' ~ sum(`pH NAs`)),
+         `IR2026 DO NAs` = case_when(IR2026 == 'IR 2026' ~ sum(`DO NAs`)),
+         `IR2026 SpC NAs` = case_when(IR2026 == 'IR 2026' ~ sum(`SpC NAs`))) %>% 
+      ungroup() %>%  group_by(FDT_STA_ID, IR2028 ) %>% 
+   mutate(`IR2028 Sample n` = case_when(IR2028 == 'IR 2028' ~ sum(`Sample n`)),
+          `IR2028 Temp NAs` = case_when(IR2028 == 'IR 2028' ~ sum(`Temp NAs`)),
+          `IR2028 pH NAs` = case_when(IR2028 == 'IR 2028' ~ sum(`pH NAs`)),
+          `IR2028 DO NAs` = case_when(IR2028 == 'IR 2028' ~ sum(`DO NAs`)),
+          `IR2028 SpC NAs` = case_when(IR2028 == 'IR 2028' ~ sum(`SpC NAs`))) %>% 
+  ungroup() %>% 
+  dplyr::select(-c(IR2022, IR2024, IR2026, IR2028)) 
+ 
+#a table just showing sample n's and param percent reporting by IR window
+ParamSamplePerc <- ParamSampleInfo %>%
+  mutate(IR24Temp = (`IR2024 Sample n` - `IR2024 Temp NAs`)/ `IR2024 Sample n` * 100,
+         IR24pH = (`IR2024 Sample n` - `IR2024 pH NAs`)/ `IR2024 Sample n`* 100,
+         IR24DO = (`IR2024 Sample n` - `IR2024 DO NAs`)/ `IR2024 Sample n`* 100,
+         IR24SpC = (`IR2024 Sample n` - `IR2024 SpC NAs`)/ `IR2024 Sample n`* 100,
+         
+         IR26Temp = (`IR2026 Sample n` - `IR2026 Temp NAs`)/ `IR2026 Sample n`* 100,
+         IR26pH = (`IR2026 Sample n` - `IR2026 Temp NAs`)/ `IR2026 Sample n`* 100,
+         IR26DO = (`IR2026 Sample n` - `IR2026 Temp NAs`)/ `IR2026 Sample n`* 100,
+         IR26SpC = (`IR2026 Sample n` - `IR2026 Temp NAs`)/ `IR2026 Sample n`* 100,
+         
+         IR28Temp = (`IR2028 Sample n` - `IR2028 Temp NAs`)/ `IR2028 Sample n`* 100,
+         IR28pH = (`IR2028 Sample n` - `IR2028 Temp NAs`)/ `IR2028 Sample n`* 100,
+         IR28DO = (`IR2028 Sample n` - `IR2028 Temp NAs`)/ `IR2028 Sample n`* 100,
+         IR28SpC = (`IR2028 Sample n` - `IR2028 Temp NAs`)/ `IR2028 Sample n`* 100) %>%
+   mutate(flag = if_else(c(IR24Temp:IR28SpC) == 100.0000, "ok", "FLAG")) %>% #right now get 100% flag because no station reporting 100% SpC for every window
+    dplyr::select(-c(`Temp NAs`, `pH NAs`, `DO NAs`, `SpC NAs`,
+                    `IR2024 Temp NAs`, `IR2024 pH NAs`, `IR2024 DO NAs`, `IR2024 SpC NAs`,
+                    `IR2026 Temp NAs`, `IR2026 pH NAs`, `IR2026 DO NAs`, `IR2026 SpC NAs`,
+                    `IR2028 Temp NAs`, `IR2028 pH NAs`, `IR2028 DO NAs`, `IR2028 SpC NAs`)) 
+  
+write.csv(ParamSamplePerc, "SampleN_byIRandParam.csv")
+   
+```
+
+
+
+the part where I accidentally developed a sample fail finder, fun!
+```{r}
+#NUMBER in TABLE tells you if there is an NA for that parameter, i.e. if it is missing from that station's data
+#flag tells you if missing data is uneven across the 3 params, i.e. more data for one param than for others
+#subset gives you just flagged stations to check out
+
+summarizeByParameter2 <- function(x){
+    x %>%
+      select(FDT_STA_ID, FDT_DATE_TIME, FDT_FIELD_PH, FDT_TEMP_CELCIUS, DO_mg_L) %>%
+      mutate(Year = year(FDT_DATE_TIME)) %>% 
+      group_by(FDT_STA_ID, Year) %>%
+      summarise_all(funs(sum(is.na(.)))) %>%
+        mutate(flag = ifelse(FDT_FIELD_PH == FDT_TEMP_CELCIUS & FDT_FIELD_PH == DO_mg_L & FDT_TEMP_CELCIUS == DO_mg_L, "ok", "flag")) %>%
+        subset(flag == "flag")
+}
+#extra summ sample count! gives you a denominator for your percentage -- ALL THE STATIONS for 2015-2020 
+#filter by IR22 window aka 2015-2020, summ param flag
+#do INVIDV param flag
+
+summarizeByParameter2(BRROconventionals) 
+
+ParamNAs <- function(x) {
+    x %>%    
+        select(FDT_STA_ID, FDT_DATE_TIME, FDT_FIELD_PH, FDT_TEMP_CELCIUS, DO_mg_L) %>%
+        group_by(FDT_STA_ID) %>%
+        summarise_all(funs(sum(is.na(.)))) 
+}
+
+ParamNAs(BRROconventionals)
+```
+
+
+
